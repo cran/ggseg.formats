@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Customising brain atlases</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Customising brain atlases</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(ggseg.formats)</span></code></pre></div>
+<p>Say you are preparing a figure that focuses on the subcortical
+structures visible in a single sagittal slice. You want to drop the
+views you don’t need, remove small polygon fragments that clutter the
+image, turn some regions into non-legend context, and add a metadata
+column so you can facet by structure type. Every one of those steps is a
+single function call, and they all pipe together.</p>
+<div id="the-manipulation-toolkit" class="section level2">
+<h2>The manipulation toolkit</h2>
+<p>ggseg.formats provides three groups of manipulation functions.
+<strong>Region functions</strong> (<code>atlas_region_*</code>) control
+which regions are active in the atlas. <strong>View functions</strong>
+(<code>atlas_view_*</code>) control the 2D sf geometry—which views are
+present and how they are arranged. <strong>Core functions</strong>
+(<code>atlas_core_*</code>) enrich the region metadata. All of them
+accept a <code>ggseg_atlas</code> as the first argument, return a new
+<code>ggseg_atlas</code>, and play nicely with the pipe.</p>
+</div>
+<div id="keeping-and-removing-regions" class="section level2">
+<h2>Keeping and removing regions</h2>
+<p><code>atlas_region_remove()</code> strips a region entirely—from
+core, palette, sf geometry, and 3D data. The <code>pattern</code>
+argument is passed to <code>grepl()</code> with
+<code>ignore.case = TRUE</code>, so partial matches work:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>no_cc <span class="ot">&lt;-</span> <span class="fu">atlas_region_remove</span>(<span class="fu">dk</span>(), <span class="st">&quot;corpus callosum&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="st">&quot;corpus callosum&quot;</span> <span class="sc">%in%</span> <span class="fu">atlas_regions</span>(no_cc)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<p><code>atlas_region_keep()</code> is the inverse: it keeps only the
+regions that match and turns everything else into context geometry (sf
+is preserved for surface continuity, but non-matching regions leave core
+and palette):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>frontal <span class="ot">&lt;-</span> <span class="fu">atlas_region_keep</span>(<span class="fu">dk</span>(), <span class="st">&quot;frontal&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">atlas_regions</span>(frontal)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#&gt; [1] &quot;caudal middle frontal&quot;  &quot;frontal pole&quot;           &quot;lateral orbitofrontal&quot; </span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#&gt; [4] &quot;medial orbitofrontal&quot;   &quot;rostral middle frontal&quot; &quot;superior frontal&quot;</span></span></code></pre></div>
+<p>Both functions accept a <code>match_on</code> argument to choose
+whether the pattern matches against <code>&quot;region&quot;</code> (the default,
+human-readable name) or <code>&quot;label&quot;</code> (the unique
+identifier):</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>lh_only <span class="ot">&lt;-</span> <span class="fu">atlas_region_keep</span>(<span class="fu">dk</span>(), <span class="st">&quot;^lh_&quot;</span>, <span class="at">match_on =</span> <span class="st">&quot;label&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">atlas_labels</span>(lh_only))</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co">#&gt; [1] &quot;lh_bankssts&quot;                &quot;lh_caudalanteriorcingulate&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#&gt; [3] &quot;lh_caudalmiddlefrontal&quot;     &quot;lh_corpuscallosum&quot;         </span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co">#&gt; [5] &quot;lh_cuneus&quot;                  &quot;lh_entorhinal&quot;</span></span></code></pre></div>
+</div>
+<div id="context-regions" class="section level2">
+<h2>Context regions</h2>
+<p>Sometimes you want a region’s polygon to stay visible (rendered in
+grey) but not appear in the legend or carry data. This is what
+<code>atlas_region_contextual()</code> does. It removes the region from
+core, palette, and 3D data but leaves the sf geometry in place:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>ctx <span class="ot">&lt;-</span> <span class="fu">atlas_region_contextual</span>(<span class="fu">aseg</span>(), <span class="st">&quot;ventricle&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="st">&quot;lateral ventricle&quot;</span> <span class="sc">%in%</span> <span class="fu">atlas_regions</span>(ctx)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<p>Compare that to <code>atlas_region_remove()</code>, which would
+delete the ventricle polygons entirely, leaving gaps in the 2D
+slices.</p>
+</div>
+<div id="renaming-regions" class="section level2">
+<h2>Renaming regions</h2>
+<p><code>atlas_region_rename()</code> changes the <code>region</code>
+column without touching <code>label</code> (so geometry links stay
+intact). Pass a fixed string:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>renamed <span class="ot">&lt;-</span> <span class="fu">atlas_region_rename</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="fu">dk</span>(),</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="st">&quot;banks of superior temporal sulcus&quot;</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="st">&quot;STS banks&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>)</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="st">&quot;STS banks&quot;</span> <span class="sc">%in%</span> <span class="fu">atlas_regions</span>(renamed)</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>Or pass a function for programmatic renaming:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>upper <span class="ot">&lt;-</span> <span class="fu">atlas_region_rename</span>(<span class="fu">dk</span>(), <span class="st">&quot;.*&quot;</span>, toupper)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">atlas_regions</span>(upper))</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; [1] &quot;BANKS OF SUPERIOR TEMPORAL SULCUS&quot; &quot;CAUDAL ANTERIOR CINGULATE&quot;        </span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; [3] &quot;CAUDAL MIDDLE FRONTAL&quot;             &quot;CORPUS CALLOSUM&quot;                  </span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; [5] &quot;CUNEUS&quot;                            &quot;ENTORHINAL&quot;</span></span></code></pre></div>
+</div>
+<div id="managing-views" class="section level2">
+<h2>Managing views</h2>
+<p><code>atlas_views()</code> tells you what 2D views an atlas has:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">atlas_views</span>(<span class="fu">aseg</span>())</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co">#&gt; [1] &quot;axial_3&quot;   &quot;axial_4&quot;   &quot;axial_5&quot;   &quot;axial_6&quot;   &quot;coronal_1&quot; &quot;coronal_2&quot;</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#&gt; [7] &quot;sagittal&quot;</span></span></code></pre></div>
+<p><code>atlas_view_keep()</code> and <code>atlas_view_remove()</code>
+filter views by pattern. If you only want the sagittal slice:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>sag <span class="ot">&lt;-</span> <span class="fu">atlas_view_keep</span>(<span class="fu">aseg</span>(), <span class="st">&quot;sagittal&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">atlas_views</span>(sag)</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#&gt; [1] &quot;sagittal&quot;</span></span></code></pre></div>
+<p>Or remove several views at once by passing a vector:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>fewer <span class="ot">&lt;-</span> <span class="fu">atlas_view_remove</span>(<span class="fu">aseg</span>(), <span class="fu">c</span>(<span class="st">&quot;axial_3&quot;</span>, <span class="st">&quot;coronal_2&quot;</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">atlas_views</span>(fewer)</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co">#&gt; [1] &quot;axial_4&quot;   &quot;axial_5&quot;   &quot;axial_6&quot;   &quot;coronal_1&quot; &quot;sagittal&quot;</span></span></code></pre></div>
+</div>
+<div id="cleaning-up-geometry" class="section level2">
+<h2>Cleaning up geometry</h2>
+<p>After filtering regions you may have small polygon fragments left
+over—tiny slivers where a region just barely crossed a slice plane.
+<code>atlas_view_remove_small()</code> removes region polygons below a
+minimum area threshold. Context polygons (those not in core) are never
+removed:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>cleaned <span class="ot">&lt;-</span> <span class="fu">atlas_view_remove_small</span>(<span class="fu">aseg</span>(), <span class="at">min_area =</span> <span class="dv">50</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#&gt; ℹ Removed 20 geometries below area 50</span></span></code></pre></div>
+<p>You can scope the removal to specific views:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>cleaned_sag <span class="ot">&lt;-</span> <span class="fu">atlas_view_remove_small</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  <span class="fu">aseg</span>(),</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="at">min_area =</span> <span class="dv">50</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>  <span class="at">views =</span> <span class="st">&quot;sagittal&quot;</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>)</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co">#&gt; ℹ Removed 2 geometries below area 50</span></span></code></pre></div>
+<p><code>atlas_view_remove_region()</code> removes a specific region’s
+sf geometry without touching core, palette, or 3D data. This is useful
+when a region’s 2D projection is misleading but you still want it in
+3D:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>no_stem_sf <span class="ot">&lt;-</span> <span class="fu">atlas_view_remove_region</span>(</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="fu">aseg</span>(),</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="st">&quot;brain stem&quot;</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>  <span class="at">match_on =</span> <span class="st">&quot;region&quot;</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="reordering-and-gathering" class="section level2">
+<h2>Reordering and gathering</h2>
+<p>When you remove views, the remaining geometry keeps its original
+coordinates, which can leave awkward gaps.
+<code>atlas_view_gather()</code> repositions views side-by-side with a
+configurable gap:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>trimmed <span class="ot">&lt;-</span> <span class="fu">aseg</span>() <span class="sc">|&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>  <span class="fu">atlas_view_keep</span>(<span class="fu">c</span>(<span class="st">&quot;sagittal&quot;</span>, <span class="st">&quot;coronal_3&quot;</span>, <span class="st">&quot;axial_3&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>  <span class="fu">atlas_view_gather</span>()</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="fu">atlas_views</span>(trimmed)</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co">#&gt; [1] &quot;axial_3&quot;  &quot;sagittal&quot;</span></span></code></pre></div>
+<p><code>atlas_view_reorder()</code> lets you choose the left-to-right
+order and repositions at the same time. Views not mentioned in
+<code>order</code> are appended at the end:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>reordered <span class="ot">&lt;-</span> <span class="fu">aseg</span>() <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>  <span class="fu">atlas_view_keep</span>(<span class="fu">c</span>(<span class="st">&quot;sagittal&quot;</span>, <span class="st">&quot;coronal_3&quot;</span>, <span class="st">&quot;axial_3&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="fu">atlas_view_reorder</span>(<span class="fu">c</span>(<span class="st">&quot;axial_3&quot;</span>, <span class="st">&quot;sagittal&quot;</span>, <span class="st">&quot;coronal_3&quot;</span>))</span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="fu">atlas_views</span>(reordered)</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co">#&gt; [1] &quot;axial_3&quot;  &quot;sagittal&quot;</span></span></code></pre></div>
+</div>
+<div id="adding-metadata" class="section level2">
+<h2>Adding metadata</h2>
+<p><code>atlas_core_add()</code> left-joins a data frame onto the core
+table. This is useful for attaching grouping variables, statistical
+results, or any other per-region information. Here we add a custom
+network column to a handful of regions:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>network_info <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  <span class="at">region =</span> <span class="fu">c</span>(</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>    <span class="st">&quot;superior frontal&quot;</span>,</span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>    <span class="st">&quot;precuneus&quot;</span>,</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>    <span class="st">&quot;inferior parietal&quot;</span>,</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>    <span class="st">&quot;posterior cingulate&quot;</span></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>  ),</span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>  <span class="at">network =</span> <span class="st">&quot;default mode&quot;</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>)</span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>enriched <span class="ot">&lt;-</span> <span class="fu">atlas_core_add</span>(<span class="fu">dk</span>(), network_info)</span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>enriched<span class="sc">$</span>core[<span class="sc">!</span><span class="fu">is.na</span>(enriched<span class="sc">$</span>core<span class="sc">$</span>network), <span class="fu">c</span>(<span class="st">&quot;region&quot;</span>, <span class="st">&quot;network&quot;</span>)]</span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a><span class="co">#&gt; # A tibble: 8 × 2</span></span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a><span class="co">#&gt;   region              network     </span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;               &lt;chr&gt;       </span></span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a><span class="co">#&gt; 1 inferior parietal   default mode</span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="co">#&gt; 2 posterior cingulate default mode</span></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="co">#&gt; 3 precuneus           default mode</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="co">#&gt; 4 superior frontal    default mode</span></span>
+<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a><span class="co">#&gt; 5 inferior parietal   default mode</span></span>
+<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="co">#&gt; 6 posterior cingulate default mode</span></span>
+<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a><span class="co">#&gt; 7 precuneus           default mode</span></span>
+<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co">#&gt; 8 superior frontal    default mode</span></span></code></pre></div>
+<p>The <code>by</code> argument defaults to <code>&quot;region&quot;</code> but
+you can join on any shared column.</p>
+</div>
+<div id="a-full-pipeline" class="section level2">
+<h2>A full pipeline</h2>
+<p>Here is a realistic pipeline that prepares the <code>aseg</code>
+atlas for a compact two-view figure of deep grey matter structures:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>publication_aseg <span class="ot">&lt;-</span> <span class="fu">aseg</span>() <span class="sc">|&gt;</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  <span class="fu">atlas_view_keep</span>(<span class="fu">c</span>(<span class="st">&quot;sagittal&quot;</span>, <span class="st">&quot;coronal_3&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  <span class="fu">atlas_region_contextual</span>(<span class="st">&quot;ventricle|choroid|white|cc&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>  <span class="fu">atlas_view_remove_small</span>(<span class="at">min_area =</span> <span class="dv">30</span>) <span class="sc">|&gt;</span></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>  <span class="fu">atlas_view_gather</span>(<span class="at">gap =</span> <span class="fl">0.1</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt; ℹ Removed 2 geometries below area 30</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a>publication_aseg</span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt; ── aseg ggseg atlas ────────────────────────────────────────────────────────────</span></span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt; Type: subcortical</span></span>
+<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co">#&gt; Regions: 12</span></span>
+<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt; Hemispheres: left, NA, right</span></span>
+<span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a><span class="co">#&gt; Views: sagittal</span></span>
+<span id="cb17-15"><a href="#cb17-15" tabindex="-1"></a><span class="co">#&gt; Palette: ✔</span></span>
+<span id="cb17-16"><a href="#cb17-16" tabindex="-1"></a><span class="co">#&gt; Rendering: ✔ ggseg</span></span>
+<span id="cb17-17"><a href="#cb17-17" tabindex="-1"></a><span class="co">#&gt; ✔ ggseg3d (meshes)</span></span>
+<span id="cb17-18"><a href="#cb17-18" tabindex="-1"></a><span class="co">#&gt; ────────────────────────────────────────────────────────────────────────────────</span></span>
+<span id="cb17-19"><a href="#cb17-19" tabindex="-1"></a><span class="co">#&gt; # A tibble: 38 × 4</span></span>
+<span id="cb17-20"><a href="#cb17-20" tabindex="-1"></a><span class="co">#&gt;    hemi  region          label                   structure    </span></span>
+<span id="cb17-21"><a href="#cb17-21" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt; &lt;chr&gt;           &lt;chr&gt;                   &lt;chr&gt;        </span></span>
+<span id="cb17-22"><a href="#cb17-22" tabindex="-1"></a><span class="co">#&gt;  1 left  Cerebellum      Left-Cerebellum-Cortex  cerebellum   </span></span>
+<span id="cb17-23"><a href="#cb17-23" tabindex="-1"></a><span class="co">#&gt;  2 left  Cerebellum      Left-Cerebellum-Cortex  cerebellum   </span></span>
+<span id="cb17-24"><a href="#cb17-24" tabindex="-1"></a><span class="co">#&gt;  3 left  Thalamus        Left-Thalamus           basal ganglia</span></span>
+<span id="cb17-25"><a href="#cb17-25" tabindex="-1"></a><span class="co">#&gt;  4 left  Thalamus        Left-Thalamus           basal ganglia</span></span>
+<span id="cb17-26"><a href="#cb17-26" tabindex="-1"></a><span class="co">#&gt;  5 left  Thalamus Proper Left-Thalamus           basal ganglia</span></span>
+<span id="cb17-27"><a href="#cb17-27" tabindex="-1"></a><span class="co">#&gt;  6 left  Thalamus Proper Left-Thalamus           basal ganglia</span></span>
+<span id="cb17-28"><a href="#cb17-28" tabindex="-1"></a><span class="co">#&gt;  7 left  Caudate         Left-Caudate            basal ganglia</span></span>
+<span id="cb17-29"><a href="#cb17-29" tabindex="-1"></a><span class="co">#&gt;  8 left  Caudate         Left-Caudate            basal ganglia</span></span>
+<span id="cb17-30"><a href="#cb17-30" tabindex="-1"></a><span class="co">#&gt;  9 left  Putamen         Left-Putamen            basal ganglia</span></span>
+<span id="cb17-31"><a href="#cb17-31" tabindex="-1"></a><span class="co">#&gt; 10 left  Putamen         Left-Putamen            basal ganglia</span></span>
+<span id="cb17-32"><a href="#cb17-32" tabindex="-1"></a><span class="co">#&gt; 11 left  Pallidum        Left-Pallidum           basal ganglia</span></span>
+<span id="cb17-33"><a href="#cb17-33" tabindex="-1"></a><span class="co">#&gt; 12 left  Pallidum        Left-Pallidum           basal ganglia</span></span>
+<span id="cb17-34"><a href="#cb17-34" tabindex="-1"></a><span class="co">#&gt; 13 &lt;NA&gt;  Brain Stem      Brain-Stem              brainstem    </span></span>
+<span id="cb17-35"><a href="#cb17-35" tabindex="-1"></a><span class="co">#&gt; 14 left  Hippocampus     Left-Hippocampus        limbic       </span></span>
+<span id="cb17-36"><a href="#cb17-36" tabindex="-1"></a><span class="co">#&gt; 15 left  Hippocampus     Left-Hippocampus        limbic       </span></span>
+<span id="cb17-37"><a href="#cb17-37" tabindex="-1"></a><span class="co">#&gt; 16 left  Amygdala        Left-Amygdala           limbic       </span></span>
+<span id="cb17-38"><a href="#cb17-38" tabindex="-1"></a><span class="co">#&gt; 17 left  Amygdala        Left-Amygdala           limbic       </span></span>
+<span id="cb17-39"><a href="#cb17-39" tabindex="-1"></a><span class="co">#&gt; 18 left  ventraldc       Left-VentralDC          &lt;NA&gt;         </span></span>
+<span id="cb17-40"><a href="#cb17-40" tabindex="-1"></a><span class="co">#&gt; 19 left  vessel          Left-vessel             &lt;NA&gt;         </span></span>
+<span id="cb17-41"><a href="#cb17-41" tabindex="-1"></a><span class="co">#&gt; 20 right Cerebellum      Right-Cerebellum-Cortex cerebellum   </span></span>
+<span id="cb17-42"><a href="#cb17-42" tabindex="-1"></a><span class="co">#&gt; 21 right Cerebellum      Right-Cerebellum-Cortex cerebellum   </span></span>
+<span id="cb17-43"><a href="#cb17-43" tabindex="-1"></a><span class="co">#&gt; 22 right Thalamus        Right-Thalamus          basal ganglia</span></span>
+<span id="cb17-44"><a href="#cb17-44" tabindex="-1"></a><span class="co">#&gt; 23 right Thalamus        Right-Thalamus          basal ganglia</span></span>
+<span id="cb17-45"><a href="#cb17-45" tabindex="-1"></a><span class="co">#&gt; 24 right Thalamus Proper Right-Thalamus          basal ganglia</span></span>
+<span id="cb17-46"><a href="#cb17-46" tabindex="-1"></a><span class="co">#&gt; 25 right Thalamus Proper Right-Thalamus          basal ganglia</span></span>
+<span id="cb17-47"><a href="#cb17-47" tabindex="-1"></a><span class="co">#&gt; 26 right Caudate         Right-Caudate           basal ganglia</span></span>
+<span id="cb17-48"><a href="#cb17-48" tabindex="-1"></a><span class="co">#&gt; 27 right Caudate         Right-Caudate           basal ganglia</span></span>
+<span id="cb17-49"><a href="#cb17-49" tabindex="-1"></a><span class="co">#&gt; 28 right Putamen         Right-Putamen           basal ganglia</span></span>
+<span id="cb17-50"><a href="#cb17-50" tabindex="-1"></a><span class="co">#&gt; 29 right Putamen         Right-Putamen           basal ganglia</span></span>
+<span id="cb17-51"><a href="#cb17-51" tabindex="-1"></a><span class="co">#&gt; 30 right Pallidum        Right-Pallidum          basal ganglia</span></span>
+<span id="cb17-52"><a href="#cb17-52" tabindex="-1"></a><span class="co">#&gt; 31 right Pallidum        Right-Pallidum          basal ganglia</span></span>
+<span id="cb17-53"><a href="#cb17-53" tabindex="-1"></a><span class="co">#&gt; 32 right Hippocampus     Right-Hippocampus       limbic       </span></span>
+<span id="cb17-54"><a href="#cb17-54" tabindex="-1"></a><span class="co">#&gt; 33 right Hippocampus     Right-Hippocampus       limbic       </span></span>
+<span id="cb17-55"><a href="#cb17-55" tabindex="-1"></a><span class="co">#&gt; 34 right Amygdala        Right-Amygdala          limbic       </span></span>
+<span id="cb17-56"><a href="#cb17-56" tabindex="-1"></a><span class="co">#&gt; 35 right Amygdala        Right-Amygdala          limbic       </span></span>
+<span id="cb17-57"><a href="#cb17-57" tabindex="-1"></a><span class="co">#&gt; 36 right ventraldc       Right-VentralDC         &lt;NA&gt;         </span></span>
+<span id="cb17-58"><a href="#cb17-58" tabindex="-1"></a><span class="co">#&gt; 37 right vessel          Right-vessel            &lt;NA&gt;         </span></span>
+<span id="cb17-59"><a href="#cb17-59" tabindex="-1"></a><span class="co">#&gt; 38 &lt;NA&gt;  Optic Chiasm    Optic-Chiasm            other</span></span></code></pre></div>
+<p>Each function returns a valid <code>ggseg_atlas</code>, so you can
+inspect intermediate results, branch the pipeline, or hand the final
+object straight to ggseg for plotting.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
