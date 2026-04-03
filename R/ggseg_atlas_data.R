@@ -92,6 +92,67 @@ ggseg_data_subcortical <- function(sf = NULL, meshes = NULL) {
 }
 
 
+#' Create cerebellar atlas data
+#'
+#' Creates a data object for cerebellar brain atlases. Cerebellar atlases
+#' use sf polygons from a SUIT flatmap for 2D rendering and vertex indices
+#' into the shared SUIT cerebellar surface mesh for 3D rendering.
+#'
+#' The shared mesh (see [get_cerebellar_mesh()]) includes a cap over the
+#' peduncular surface where the cerebellum meets the brainstem. Vertices
+#' on this cap (indices 28,935--30,012) are not assigned to any atlas
+#' region and render as `na_colour` in 3D, analogous to the medial wall
+#' in cortical atlases.
+#'
+#' Deep cerebellar structures (e.g. dentate, interposed, fastigial nuclei)
+#' that are not on the cortical surface are stored as individual per-region
+#' meshes in `meshes`, following the same format as subcortical atlases.
+#' Their 2D sf geometries use views other than "flatmap" (e.g. "nuclei").
+#'
+#' @param sf sf data.frame with columns label, view, geometry for 2D rendering.
+#'   Surface regions use view "flatmap"; deep structures use other views.
+#' @param vertices data.frame with columns label and vertices (list-column of
+#'   integer vectors). Each vector contains 0-based vertex indices into the
+#'   SUIT cerebellar surface (see [get_cerebellar_mesh()]). Only for surface
+#'   regions.
+#' @param meshes Optional data.frame with columns label and mesh (list-column
+#'   of mesh objects with vertices and faces). For deep cerebellar structures
+#'   that are not on the cortical surface. Same format as
+#'   [ggseg_data_subcortical()] meshes.
+#'
+#' @return An object of class c("ggseg_data_cerebellar", "ggseg_atlas_data")
+#' @export
+ggseg_data_cerebellar <- function(sf = NULL, vertices = NULL, meshes = NULL) {
+  if (is.null(sf) && is.null(vertices) && is.null(meshes)) {
+    cli::cli_abort(
+      c("At least one of {.arg sf}, {.arg vertices},",
+        "or {.arg meshes} is required.")
+    )
+  }
+
+  if (!is.null(vertices)) {
+    vertices <- validate_vertices(vertices)
+  }
+
+  if (!is.null(meshes)) {
+    meshes <- validate_meshes(meshes)
+  }
+
+  if (!is.null(sf)) {
+    sf <- validate_sf(sf)
+  }
+
+  structure(
+    list(
+      sf = sf,
+      vertices = vertices,
+      meshes = meshes
+    ),
+    class = c("ggseg_data_cerebellar", "ggseg_atlas_data")
+  )
+}
+
+
 #' Create tract atlas data
 #'
 #' Creates a data object for white matter tract atlases. Stores centerlines
@@ -280,6 +341,25 @@ print.ggseg_data_subcortical <- function(x, ...) {
   if (!is.null(x$meshes)) {
     cli::cli_text("{.strong 3D (ggseg3d):} meshes")
     print_mesh_summary(x$meshes)
+  }
+
+  invisible(x)
+}
+
+
+#' @export
+print.ggseg_data_cerebellar <- function(x, ...) {
+  cli::cli_h2("ggseg_data_cerebellar")
+
+  if (!is.null(x$sf)) {
+    n_labels <- length(unique(x$sf$label)) # nolint: object_usage_linter
+    views <- paste0(unique(x$sf$view), collapse = ", ") # nolint
+    cli::cli_text("{.strong 2D (ggseg):} {n_labels} labels, views: {views}")
+  }
+
+  if (!is.null(x$vertices)) {
+    cli::cli_text("{.strong 3D (ggseg3d):} vertex indices (SUIT surface)")
+    print(x$vertices, ...)
   }
 
   invisible(x)

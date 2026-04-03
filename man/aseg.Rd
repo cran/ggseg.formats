@@ -57,7 +57,7 @@ Plus midline and ventricular structures:
 
 \examples{
 aseg()
-
+plot(aseg())
 atlas_regions(aseg())
 }
 \references{
@@ -76,3 +76,4 @@ Other ggseg_atlases:
 \code{\link{tracula}()}
 }
 \concept{ggseg_atlases}
+\concept{subcortical_atlases}

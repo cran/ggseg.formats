@@ -51,10 +51,11 @@
 #' [ggseg_atlas()] for the atlas class constructor
 #'
 #' @family ggseg_atlases
+#' @family cortical_atlases
 #' @export
 #' @examples
 #' dk()
-#'
+#' plot(dk())
 #' atlas_regions(dk())
 #' atlas_labels(dk())
 dk <- function() .dk_atlas # nolint [object_usage_linter]
@@ -118,10 +119,11 @@ dk <- function() .dk_atlas # nolint [object_usage_linter]
 #' [ggseg_atlas()] for the atlas class constructor
 #'
 #' @family ggseg_atlases
+#' @family subcortical_atlases
 #' @export
 #' @examples
 #' aseg()
-#'
+#' plot(aseg())
 #' atlas_regions(aseg())
 aseg <- function() .aseg_atlas # nolint [object_usage_linter]
 
@@ -161,9 +163,10 @@ aseg <- function() .aseg_atlas # nolint [object_usage_linter]
 #' [ggseg_atlas()] for the atlas class constructor
 #'
 #' @family ggseg_atlases
+#' @family tract_atlases
 #' @export
 #' @examples
 #' tracula()
-#'
+#' plot(tracula())
 #' atlas_regions(tracula())
 tracula <- function() .tracula_atlas # nolint [object_usage_linter]

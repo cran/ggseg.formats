@@ -31,7 +31,7 @@ MRI using FreeSurfer's TRACULA training data. It works with both ggseg
 }
 \examples{
 tracula()
-
+plot(tracula())
 atlas_regions(tracula())
 }
 \references{
@@ -51,3 +51,4 @@ Other ggseg_atlases:
 \code{\link{dk}()}
 }
 \concept{ggseg_atlases}
+\concept{tract_atlases}

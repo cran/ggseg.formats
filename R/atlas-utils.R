@@ -549,12 +549,14 @@ atlas_view_remove_small <- function(atlas, min_area, views = NULL) {
 #'   after view removal.
 #' @export
 atlas_view_gather <- function(atlas, gap = 0.15) {
-  if (is.null(atlas$data$sf)) {
-    cli::cli_warn("Atlas has no sf data")
+  sf_data <- atlas$data$sf
+  if (is.null(sf_data) || !inherits(sf_data, "sf") || nrow(sf_data) == 0) {
+    if (is.null(sf_data)) cli::cli_warn("Atlas has no sf data")
     return(atlas)
   }
 
-  new_sf <- reposition_views(atlas$data$sf, gap = gap)
+  new_sf <- reposition_views(sf_data, type = atlas$type, gap = gap)
+  if (is.null(new_sf) || !inherits(new_sf, "sf")) return(atlas)
   new_data <- rebuild_atlas_data(atlas, new_sf)
   rebuild_atlas(atlas, new_data)
 }
@@ -583,11 +585,26 @@ atlas_view_reorder <- function(atlas, order, gap = 0.15) {
     return(atlas)
   }
 
-  atlas$data$sf$view <- factor(atlas$data$sf$view, levels = order)
-  new_sf <- atlas$data$sf[order(atlas$data$sf$view), ]
-  new_sf$view <- as.character(new_sf$view)
+  if (atlas$type == "cortical") {
+    hemi <- ifelse(
+      grepl("^lh[_.]", atlas$data$sf$label), "left",
+      ifelse(grepl("^rh[_.]", atlas$data$sf$label), "right", "")
+    )
+    group_key <- paste(hemi, atlas$data$sf$view)
+    expanded_order <- unlist(lapply(order, function(v) {
+      hemis <- unique(hemi[atlas$data$sf$view == v])
+      hemis <- intersect(c("left", "right", ""), hemis)
+      paste(hemis, v)
+    }))
+    group_key <- factor(group_key, levels = expanded_order)
+    new_sf <- atlas$data$sf[order(group_key), ]
+  } else {
+    atlas$data$sf$view <- factor(atlas$data$sf$view, levels = order)
+    new_sf <- atlas$data$sf[order(atlas$data$sf$view), ]
+    new_sf$view <- as.character(new_sf$view)
+  }
 
-  new_sf <- reposition_views(new_sf, gap = gap)
+  new_sf <- reposition_views(new_sf, type = atlas$type, gap = gap)
   new_data <- rebuild_atlas_data(atlas, new_sf)
   rebuild_atlas(atlas, new_data)
 }
@@ -596,11 +613,30 @@ atlas_view_reorder <- function(atlas, order, gap = 0.15) {
 #' @keywords internal
 #' @noRd
 #' @importFrom sf st_geometry st_bbox st_coordinates
-reposition_views <- function(sf_obj, gap = 0.15) {
-  views <- unique(sf_obj$view)
+reposition_views <- function(sf_obj, type = NULL, gap = 0.15) {
+  if (!inherits(sf_obj, "sf") && !inherits(sf_obj, "data.frame")) {
+    return(sf_obj)
+  }
+  if (is.null(sf_obj) || nrow(sf_obj) == 0) return(sf_obj)
 
-  view_data <- lapply(views, function(v) {
-    idx <- sf_obj$view == v
+  if (inherits(sf_obj$geometry, "sfc_GEOMETRY")) {
+    sf_obj <- sf::st_cast(sf_obj, "MULTIPOLYGON")
+  }
+
+  group_key <- sf_obj$view
+
+  if (identical(type, "cortical")) {
+    hemi <- ifelse(
+      grepl("^lh[_.]", sf_obj$label), "left",
+      ifelse(grepl("^rh[_.]", sf_obj$label), "right", "")
+    )
+    group_key <- paste(hemi, sf_obj$view)
+  }
+
+  groups <- unique(group_key)
+
+  view_data <- lapply(groups, function(g) {
+    idx <- group_key == g
     sf_obj[idx, ]
   })
 
@@ -640,8 +676,16 @@ reposition_views <- function(sf_obj, gap = 0.15) {
 #' @keywords internal
 #' @noRd
 rebuild_atlas_data <- function(atlas, new_sf) {
-  if (!is.null(atlas$data$vertices)) {
-    ggseg_data_cortical(sf = new_sf, vertices = atlas$data$vertices)
+  if (!is.null(atlas$data$vertices) && !is.null(atlas$data$meshes)) {
+    ggseg_data_cerebellar(
+      sf = new_sf, vertices = atlas$data$vertices, meshes = atlas$data$meshes
+    )
+  } else if (!is.null(atlas$data$vertices)) {
+    if (inherits(atlas$data, "ggseg_data_cerebellar")) {
+      ggseg_data_cerebellar(sf = new_sf, vertices = atlas$data$vertices)
+    } else {
+      ggseg_data_cortical(sf = new_sf, vertices = atlas$data$vertices)
+    }
   } else if (!is.null(atlas$data$meshes)) {
     ggseg_data_subcortical(sf = new_sf, meshes = atlas$data$meshes)
   } else if (!is.null(atlas$data$centerlines)) {

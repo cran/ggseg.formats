@@ -47,7 +47,7 @@ frontal pole, temporal pole, transverse temporal, and insula.
 
 \examples{
 dk()
-
+plot(dk())
 atlas_regions(dk())
 atlas_labels(dk())
 }
@@ -71,4 +71,5 @@ Other ggseg_atlases:
 \code{\link{aseg}()},
 \code{\link{tracula}()}
 }
+\concept{cortical_atlases}
 \concept{ggseg_atlases}
