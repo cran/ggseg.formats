@@ -19,9 +19,12 @@ knitr::opts_chunk$set(
 ```{r}
 #| label: setup
 library(ggseg.formats)
+# Several examples below print or plot via the sf path. Since the
+# sf-optional milestone, sf is a Suggests dependency, so load it here.
+library(sf)
 ```
 
-Everything in the ggseg ecosystem starts from a single object: the `ggseg_atlas`.
+Everything in the ggsegverse ecosystem starts from a single object: the `ggseg_atlas`.
 Whether you are making a 2D cortical flatmap with ggseg or spinning a 3D mesh in
 ggseg3d, the atlas is the container that holds the geometry, the region metadata,
 and the colour palette together. This vignette walks through the structure so you
@@ -177,8 +180,7 @@ atlas_type(aseg())
 atlas_type(tracula())
 ```
 
-`atlas_palette()` retrieves the colour palette. You can pass the atlas object
-directly or its name as a string:
+`atlas_palette()` retrieves the colour palette from an atlas object:
 
 ```{r}
 #| label: atlas-palette

@@ -49,16 +49,18 @@ as_ggseg_atlas.brain_atlas <- function(x) {
     return(restamp_class(x))
   }
 
-  if (!is.null(x$core)) {
-    if (!is.null(x$sf) || !is.null(x$vertices) || !is.null(x$meshes)) {
-      return(convert_legacy_structure(x))
-    }
-    if (!is.null(x$data) && is.data.frame(x$data)) {
-      return(convert_legacy_brain_data(x))
-    }
+  has_legacy_slots <- !all(
+    vapply(
+      list(x$sf, x$vertices, x$meshes),
+      is.null,
+      logical(1)
+    )
+  )
+  if (!is.null(x$core) && has_legacy_slots) {
+    return(convert_legacy_structure(x))
   }
 
-  if (is.null(x$core) && !is.null(x$data) && is.data.frame(x$data)) {
+  if (!is.null(x$data) && is.data.frame(x$data)) {
     return(convert_legacy_brain_data(x))
   }
 
@@ -127,7 +129,7 @@ as_brain_atlas <- function(x) {
 #' @keywords internal
 #' @noRd
 convert_legacy_brain_data <- function(x) {
-  if (!inherits(x, "brain_atlas") && !inherits(x, "ggseg_atlas")) {
+  if (!is_atlas_class(x)) {
     cli::cli_abort(
       "{.arg x} must be a {.cls brain_atlas} or {.cls ggseg_atlas}."
     )
@@ -137,38 +139,19 @@ convert_legacy_brain_data <- function(x) {
     return(restamp_class(x))
   }
 
-  sf_data <- x$data
-  class(sf_data) <- setdiff(
-    class(sf_data),
-    c("brain_data", "ggseg_atlas", "brain_atlas")
-  )
+  require_sf("convert_legacy_brain_data()")
+  sf_data <- normalize_legacy_sf(x$data)
   type <- x$type %||% "cortical"
 
-  if ("side" %in% names(sf_data) && !"view" %in% names(sf_data)) {
-    names(sf_data)[names(sf_data) == "side"] <- "view"
-  }
-
-  core <- dplyr::distinct(
-    sf::st_drop_geometry(sf_data[
-      !is.na(sf_data$label),
-      c("hemi", "region", "label"),
-      drop = FALSE
-    ])
-  )
-
-  palette <- if ("colour" %in% names(sf_data)) {
-    pal <- stats::setNames(sf_data$colour, sf_data$label)
-    pal[!is.na(names(pal)) & !duplicated(names(pal))]
-  } else {
-    NULL
-  }
+  core <- legacy_core_from_sf(sf_data)
+  palette <- legacy_palette_from_sf(sf_data)
 
   data <- switch(
     type,
-    "cortical" = ggseg_data_cortical(sf = sf_data, vertices = NULL),
-    "subcortical" = ggseg_data_subcortical(sf = sf_data, meshes = NULL),
-    "tract" = ggseg_data_tract(sf = sf_data, meshes = NULL),
-    ggseg_data_cortical(sf = sf_data, vertices = NULL)
+    "cortical" = ggseg_data_cortical(geom = sf_data, vertices = NULL),
+    "subcortical" = ggseg_data_subcortical(geom = sf_data, meshes = NULL),
+    "tract" = ggseg_data_tract(geom = sf_data, meshes = NULL),
+    ggseg_data_cortical(geom = sf_data, vertices = NULL)
   )
 
   ggseg_atlas(
@@ -195,9 +178,9 @@ convert_legacy_structure <- function(x) {
 
   data <- switch(
     type,
-    "cortical" = ggseg_data_cortical(sf = x$sf, vertices = x$vertices),
-    "subcortical" = ggseg_data_subcortical(sf = x$sf, meshes = x$meshes),
-    "tract" = ggseg_data_tract(sf = x$sf, meshes = x$meshes),
+    "cortical" = ggseg_data_cortical(geom = x$sf, vertices = x$vertices),
+    "subcortical" = ggseg_data_subcortical(geom = x$sf, meshes = x$meshes),
+    "tract" = ggseg_data_tract(geom = x$sf, meshes = x$meshes),
     cli::cli_abort("Unknown atlas type: {.val {type}}")
   )
 
@@ -229,4 +212,46 @@ restamp_class <- function(x) {
       "list"
     )
   )
+}
+
+
+#' Strip legacy classes from sf data and rename `side` to `view`
+#' @noRd
+#' @keywords internal
+normalize_legacy_sf <- function(sf_data) {
+  class(sf_data) <- setdiff(
+    class(sf_data),
+    c("brain_data", "ggseg_atlas", "brain_atlas")
+  )
+  if ("side" %in% names(sf_data) && !"view" %in% names(sf_data)) {
+    names(sf_data)[names(sf_data) == "side"] <- "view"
+  }
+  sf_data
+}
+
+
+#' Distinct hemi/region/label core table from legacy sf data
+#' @noRd
+#' @keywords internal
+legacy_core_from_sf <- function(sf_data) {
+  df_distinct(
+    sf::st_drop_geometry(sf_data[
+      !is.na(sf_data$label),
+      c("hemi", "region", "label"),
+      drop = FALSE
+    ]),
+    c("hemi", "region", "label")
+  )
+}
+
+
+#' Label-keyed colour palette from legacy sf data, or NULL
+#' @noRd
+#' @keywords internal
+legacy_palette_from_sf <- function(sf_data) {
+  if (!("colour" %in% names(sf_data))) {
+    return(NULL)
+  }
+  pal <- stats::setNames(sf_data$colour, sf_data$label)
+  pal[!is.na(names(pal)) & !duplicated(names(pal))]
 }

@@ -4,10 +4,10 @@
 #' vertex indices that map regions to vertices on a shared brain surface mesh
 #' (e.g., fsaverage5).
 #'
-#' @param sf sf data.frame with columns label, view, geometry for 2D rendering.
-#'   Optional but required for ggseg plotting.
+#' @template geom
 #' @param vertices data.frame with columns label and vertices (list-column of
 #'   integer vectors). Each vector contains vertex indices for that region.
+#' @template geom_dots
 #'
 #' @return An object of class c("ggseg_data_cortical", "ggseg_atlas_data")
 #' @export
@@ -19,22 +19,22 @@
 #'     vertices = I(list(c(1L, 2L, 3L), c(4L, 5L, 6L)))
 #'   )
 #' )
-ggseg_data_cortical <- function(sf = NULL, vertices = NULL) {
-  if (is.null(sf) && is.null(vertices)) {
-    cli::cli_abort("At least one of {.arg sf} or {.arg vertices} is required.")
+ggseg_data_cortical <- function(geom = NULL, vertices = NULL, ...) {
+  geom <- resolve_geom(geom, ..., .fn = "ggseg_data_cortical")
+
+  if (is.null(geom) && is.null(vertices)) {
+    cli::cli_abort(
+      "At least one of {.arg geom} or {.arg vertices} is required."
+    )
   }
 
   if (!is.null(vertices)) {
     vertices <- validate_vertices(vertices)
   }
 
-  if (!is.null(sf)) {
-    sf <- validate_sf(sf)
-  }
-
   structure(
     list(
-      sf = sf,
+      geom = geom,
       vertices = vertices
     ),
     class = c("ggseg_data_cortical", "ggseg_atlas_data")
@@ -47,14 +47,14 @@ ggseg_data_cortical <- function(sf = NULL, vertices = NULL) {
 #' Creates a data object for subcortical brain atlases. Subcortical atlases
 #' use individual 3D meshes for each structure (e.g., hippocampus, amygdala).
 #'
-#' @param sf sf data.frame with columns label, view, geometry for 2D rendering.
-#'   Optional.
+#' @template geom
 #' @param meshes data.frame with columns label and mesh (list-column).
 #'   Each mesh is a list with:
 #'   \itemize{
 #'     \item vertices: data.frame with x, y, z columns
 #'     \item faces: data.frame with i, j, k columns (1-based triangle indices)
 #'   }
+#' @template geom_dots
 #'
 #' @return An object of class c("ggseg_data_subcortical", "ggseg_atlas_data")
 #' @export
@@ -69,22 +69,20 @@ ggseg_data_cortical <- function(sf = NULL, vertices = NULL) {
 #'     )))
 #'   )
 #' )
-ggseg_data_subcortical <- function(sf = NULL, meshes = NULL) {
-  if (is.null(sf) && is.null(meshes)) {
-    cli::cli_abort("At least one of {.arg sf} or {.arg meshes} is required.")
+ggseg_data_subcortical <- function(geom = NULL, meshes = NULL, ...) {
+  geom <- resolve_geom(geom, ..., .fn = "ggseg_data_subcortical")
+
+  if (is.null(geom) && is.null(meshes)) {
+    cli::cli_abort("At least one of {.arg geom} or {.arg meshes} is required.")
   }
 
   if (!is.null(meshes)) {
     meshes <- validate_meshes(meshes)
   }
 
-  if (!is.null(sf)) {
-    sf <- validate_sf(sf)
-  }
-
   structure(
     list(
-      sf = sf,
+      geom = geom,
       meshes = meshes
     ),
     class = c("ggseg_data_subcortical", "ggseg_atlas_data")
@@ -109,8 +107,7 @@ ggseg_data_subcortical <- function(sf = NULL, meshes = NULL) {
 #' meshes in `meshes`, following the same format as subcortical atlases.
 #' Their 2D sf geometries use views other than "flatmap" (e.g. "nuclei").
 #'
-#' @param sf sf data.frame with columns label, view, geometry for 2D rendering.
-#'   Surface regions use view "flatmap"; deep structures use other views.
+#' @template geom
 #' @param vertices data.frame with columns label and vertices (list-column of
 #'   integer vectors). Each vector contains 0-based vertex indices into the
 #'   SUIT cerebellar surface (see [get_cerebellar_mesh()]). Only for surface
@@ -119,14 +116,30 @@ ggseg_data_subcortical <- function(sf = NULL, meshes = NULL) {
 #'   of mesh objects with vertices and faces). For deep cerebellar structures
 #'   that are not on the cortical surface. Same format as
 #'   [ggseg_data_subcortical()] meshes.
+#' @template geom_dots
 #'
 #' @return An object of class c("ggseg_data_cerebellar", "ggseg_atlas_data")
 #' @export
-ggseg_data_cerebellar <- function(sf = NULL, vertices = NULL, meshes = NULL) {
-  if (is.null(sf) && is.null(vertices) && is.null(meshes)) {
+#'
+#' @examples
+#' data <- ggseg_data_cerebellar(
+#'   vertices = data.frame(
+#'     label = c("lobule_I", "lobule_II"),
+#'     vertices = I(list(c(1L, 2L, 3L), c(4L, 5L, 6L)))
+#'   )
+#' )
+ggseg_data_cerebellar <- function(
+  geom = NULL,
+  vertices = NULL,
+  meshes = NULL,
+  ...
+) {
+  geom <- resolve_geom(geom, ..., .fn = "ggseg_data_cerebellar")
+
+  if (is.null(geom) && is.null(vertices) && is.null(meshes)) {
     cli::cli_abort(
-      c("At least one of {.arg sf}, {.arg vertices},",
-        "or {.arg meshes} is required.")
+      "At least one of {.arg geom}, {.arg vertices}, or {.arg meshes} is
+       required."
     )
   }
 
@@ -138,13 +151,9 @@ ggseg_data_cerebellar <- function(sf = NULL, vertices = NULL, meshes = NULL) {
     meshes <- validate_meshes(meshes)
   }
 
-  if (!is.null(sf)) {
-    sf <- validate_sf(sf)
-  }
-
   structure(
     list(
-      sf = sf,
+      geom = geom,
       vertices = vertices,
       meshes = meshes
     ),
@@ -158,8 +167,7 @@ ggseg_data_cerebellar <- function(sf = NULL, vertices = NULL, meshes = NULL) {
 #' Creates a data object for white matter tract atlases. Stores centerlines
 #' compactly; tube meshes are generated at render time for efficiency.
 #'
-#' @param sf sf data.frame with columns label, view, geometry for 2D rendering.
-#'   Optional.
+#' @template geom
 #' @param centerlines data.frame with columns:
 #'   \itemize{
 #'     \item label: tract identifier (character)
@@ -168,8 +176,9 @@ ggseg_data_cerebellar <- function(sf = NULL, vertices = NULL, meshes = NULL) {
 #'   }
 #' @param meshes Deprecated. Use centerlines instead. If provided, will be
 #'   converted to centerlines format.
-#' @param ... Absorbs legacy fields (e.g. tube_radius, tube_segments) from
-#'   old cached atlas objects.
+#' @param ... Captures a deprecated `sf` argument (converted to polygons) and
+#'   absorbs legacy fields (e.g. tube_radius, tube_segments) from old cached
+#'   atlas objects.
 #'
 #' @return An object of class c("ggseg_data_tract", "ggseg_atlas_data")
 #' @export
@@ -182,7 +191,7 @@ ggseg_data_cerebellar <- function(sf = NULL, vertices = NULL, meshes = NULL) {
 #' )
 #' data <- ggseg_data_tract(centerlines = centerlines_df)
 ggseg_data_tract <- function(
-  sf = NULL,
+  geom = NULL,
   centerlines = NULL,
   meshes = NULL,
   ...
@@ -191,9 +200,11 @@ ggseg_data_tract <- function(
     centerlines <- meshes_to_centerlines(meshes)
   }
 
-  if (is.null(sf) && is.null(centerlines)) {
+  geom <- resolve_geom(geom, ..., .fn = "ggseg_data_tract")
+
+  if (is.null(geom) && is.null(centerlines)) {
     cli::cli_abort(
-      "At least one of {.arg sf} or {.arg centerlines} is required."
+      "At least one of {.arg geom} or {.arg centerlines} is required."
     )
   }
 
@@ -201,16 +212,137 @@ ggseg_data_tract <- function(
     centerlines <- validate_centerlines(centerlines)
   }
 
-  if (!is.null(sf)) {
-    sf <- validate_sf(sf)
-  }
-
   structure(
     list(
-      sf = sf,
+      geom = geom,
       centerlines = centerlines
     ),
     class = c("ggseg_data_tract", "ggseg_atlas_data")
+  )
+}
+
+
+#' @export
+print.ggseg_data_cortical <- function(x, ...) {
+  cli::cli_h2("ggseg_data_cortical")
+
+  twod_summary <- summarise_2d(x) # nolint: object_usage_linter
+  if (!is.null(twod_summary)) {
+    cli::cli_text(twod_summary)
+  }
+
+  if (!is.null(x$vertices)) {
+    cli::cli_text("{.strong 3D (ggseg3d):} vertex indices")
+    print(x$vertices, ...)
+  }
+
+  invisible(x)
+}
+
+
+#' @export
+print.ggseg_data_subcortical <- function(x, ...) {
+  cli::cli_h2("ggseg_data_subcortical")
+
+  twod_summary <- summarise_2d(x) # nolint: object_usage_linter
+  if (!is.null(twod_summary)) {
+    cli::cli_text(twod_summary)
+  }
+
+  if (!is.null(x$meshes)) {
+    cli::cli_text("{.strong 3D (ggseg3d):} meshes")
+    print_mesh_summary(x$meshes)
+  }
+
+  invisible(x)
+}
+
+
+#' @export
+print.ggseg_data_cerebellar <- function(x, ...) {
+  cli::cli_h2("ggseg_data_cerebellar")
+
+  twod_summary <- summarise_2d(x) # nolint: object_usage_linter
+  if (!is.null(twod_summary)) {
+    cli::cli_text(twod_summary)
+  }
+
+  if (!is.null(x$vertices)) {
+    cli::cli_text("{.strong 3D (ggseg3d):} vertex indices (SUIT surface)")
+    print(x$vertices, ...)
+  }
+
+  invisible(x)
+}
+
+
+#' @export
+print.ggseg_data_tract <- function(x, ...) {
+  cli::cli_h2("ggseg_data_tract")
+
+  twod_summary <- summarise_2d(x) # nolint: object_usage_linter
+  if (!is.null(twod_summary)) {
+    cli::cli_text(twod_summary)
+  }
+
+  if (!is.null(x$centerlines)) {
+    n_tracts <- nrow(x$centerlines) # nolint: object_usage_linter
+    total_points <- sum(vapply(x$centerlines$points, nrow, integer(1))) # nolint
+    cli::cli_text(
+      "{.strong 3D (ggseg3d):} {n_tracts} centerlines ({total_points} points)"
+    )
+  }
+
+  invisible(x)
+}
+
+
+# Deprecated wrappers ----
+
+#' @param sf Deprecated. Pass 2D geometry via `geom` instead.
+#' @rdname ggseg_data_cortical
+#' @export
+brain_data_cortical <- function(sf = NULL, vertices = NULL) {
+  lifecycle::deprecate_warn(
+    "0.1.0",
+    "brain_data_cortical()",
+    "ggseg_data_cortical()"
+  )
+  ggseg_data_cortical(sf = sf, vertices = vertices)
+}
+
+
+#' @param sf Deprecated. Pass 2D geometry via `geom` instead.
+#' @rdname ggseg_data_subcortical
+#' @export
+brain_data_subcortical <- function(sf = NULL, meshes = NULL) {
+  lifecycle::deprecate_warn(
+    "0.1.0",
+    "brain_data_subcortical()",
+    "ggseg_data_subcortical()"
+  )
+  ggseg_data_subcortical(sf = sf, meshes = meshes)
+}
+
+
+#' @param sf Deprecated. Pass 2D geometry via `geom` instead.
+#' @rdname ggseg_data_tract
+#' @export
+brain_data_tract <- function(
+  sf = NULL,
+  centerlines = NULL,
+  meshes = NULL,
+  ...
+) {
+  lifecycle::deprecate_warn(
+    "0.1.0",
+    "brain_data_tract()",
+    "ggseg_data_tract()"
+  )
+  ggseg_data_tract(
+    sf = sf,
+    centerlines = centerlines,
+    meshes = meshes
   )
 }
 
@@ -237,8 +369,7 @@ meshes_to_centerlines <- function(meshes) {
     data.frame(
       label = meshes$label[i],
       points = I(list(metadata$centerline)),
-      tangents = I(list(metadata$tangents)),
-      stringsAsFactors = FALSE
+      tangents = I(list(metadata$tangents))
     )
   })
 
@@ -291,106 +422,62 @@ validate_centerlines <- function(centerlines) {
 #' @keywords internal
 compute_tangents <- function(points) {
   n <- nrow(points)
-  tangents <- matrix(0, nrow = n, ncol = 3)
 
-  for (i in seq_len(n)) {
-    if (i == 1) {
-      tangent <- points[2, ] - points[1, ]
-    } else if (i == n) {
-      tangent <- points[n, ] - points[n - 1, ]
-    } else {
-      tangent <- points[i + 1, ] - points[i - 1, ]
-    }
-    norm <- sqrt(sum(tangent^2))
-    tangents[i, ] <- if (norm > 0) tangent / norm else c(1, 0, 0)
+  # Finite differences: forward at the first point, backward at the last,
+  # central in between.
+  diffs <- matrix(0, nrow = n, ncol = 3)
+  diffs[1, ] <- points[2, ] - points[1, ]
+  diffs[n, ] <- points[n, ] - points[n - 1, ]
+  if (n > 2) {
+    mid <- 2:(n - 1)
+    diffs[mid, ] <- points[mid + 1, , drop = FALSE] -
+      points[mid - 1, , drop = FALSE]
   }
 
+  norms <- sqrt(rowSums(diffs^2))
+  tangents <- diffs / norms
+  degenerate <- norms == 0
+  if (any(degenerate)) {
+    tangents[degenerate, ] <- matrix(
+      c(1, 0, 0),
+      nrow = sum(degenerate),
+      ncol = 3,
+      byrow = TRUE
+    )
+  }
   tangents
 }
 
-
-#' @export
-print.ggseg_data_cortical <- function(x, ...) {
-  cli::cli_h2("ggseg_data_cortical")
-
-  if (!is.null(x$sf)) {
-    n_labels <- length(unique(x$sf$label)) # nolint: object_usage_linter
-    views <- paste0(unique(x$sf$view), collapse = ", ") # nolint
-    cli::cli_text("{.strong 2D (ggseg):} {n_labels} labels, views: {views}")
+#' Summarise 2D atlas data for printing
+#' @noRd
+#' @keywords internal
+summarise_2d <- function(x) {
+  src <- geom_from_data(x)
+  if (is.null(src)) {
+    return(NULL)
   }
-
-  if (!is.null(x$vertices)) {
-    cli::cli_text("{.strong 3D (ggseg3d):} vertex indices")
-    print(x$vertices, ...)
-  }
-
-  invisible(x)
-}
-
-
-#' @export
-print.ggseg_data_subcortical <- function(x, ...) {
-  cli::cli_h2("ggseg_data_subcortical")
-
-  if (!is.null(x$sf)) {
-    n_labels <- length(unique(x$sf$label)) # nolint: object_usage_linter
-    views <- paste0(unique(x$sf$view), collapse = ", ") # nolint
-    cli::cli_text("{.strong 2D (ggseg):} {n_labels} labels, views: {views}")
-  }
-
-  if (!is.null(x$meshes)) {
-    cli::cli_text("{.strong 3D (ggseg3d):} meshes")
-    print_mesh_summary(x$meshes)
-  }
-
-  invisible(x)
-}
-
-
-#' @export
-print.ggseg_data_cerebellar <- function(x, ...) {
-  cli::cli_h2("ggseg_data_cerebellar")
-
-  if (!is.null(x$sf)) {
-    n_labels <- length(unique(x$sf$label)) # nolint: object_usage_linter
-    views <- paste0(unique(x$sf$view), collapse = ", ") # nolint
-    cli::cli_text("{.strong 2D (ggseg):} {n_labels} labels, views: {views}")
-  }
-
-  if (!is.null(x$vertices)) {
-    cli::cli_text("{.strong 3D (ggseg3d):} vertex indices (SUIT surface)")
-    print(x$vertices, ...)
-  }
-
-  invisible(x)
-}
-
-
-#' @export
-print.ggseg_data_tract <- function(x, ...) {
-  cli::cli_h2("ggseg_data_tract")
-
-  if (!is.null(x$sf)) {
-    n_labels <- length(unique(x$sf$label)) # nolint: object_usage_linter
-    views <- paste0(unique(x$sf$view), collapse = ", ") # nolint
-    cli::cli_text("{.strong 2D (ggseg):} {n_labels} labels, views: {views}")
-  }
-
-  if (!is.null(x$centerlines)) {
-    n_tracts <- nrow(x$centerlines) # nolint: object_usage_linter
-    total_points <- sum(vapply(x$centerlines$points, nrow, integer(1))) # nolint
-    cli::cli_text(
-      "{.strong 3D (ggseg3d):} {n_tracts} centerlines ({total_points} points)"
+  kind <- if (inherits(src, "brain_polygons")) "polygons" else "sf"
+  n_labels <- length(unique(src$label))
+  if (kind == "sf") {
+    views <- toString(unique(src$view))
+  } else {
+    views <- toString(
+      unique(unlist(lapply(src$geometry, function(g) g$view)))
     )
   }
-
-  invisible(x)
+  sprintf(
+    "{.strong 2D (ggseg):} %d labels (%s), views: %s",
+    n_labels,
+    kind,
+    views
+  )
 }
+
 
 #' @noRd
 #' @keywords internal
 print_mesh_summary <- function(meshes) {
-  summary_df <- dplyr::tibble(
+  summary_df <- as_tbl(data.frame(
     label = meshes$label,
     vertices = vapply(
       meshes$mesh,
@@ -406,53 +493,6 @@ print_mesh_summary <- function(meshes) {
       },
       integer(1)
     )
-  )
+  ))
   print(summary_df)
-}
-
-
-# Deprecated wrappers ----
-
-#' @rdname ggseg_data_cortical
-#' @export
-brain_data_cortical <- function(sf = NULL, vertices = NULL) {
-  lifecycle::deprecate_warn(
-    "0.1.0",
-    "brain_data_cortical()",
-    "ggseg_data_cortical()"
-  )
-  ggseg_data_cortical(sf = sf, vertices = vertices)
-}
-
-
-#' @rdname ggseg_data_subcortical
-#' @export
-brain_data_subcortical <- function(sf = NULL, meshes = NULL) {
-  lifecycle::deprecate_warn(
-    "0.1.0",
-    "brain_data_subcortical()",
-    "ggseg_data_subcortical()"
-  )
-  ggseg_data_subcortical(sf = sf, meshes = meshes)
-}
-
-
-#' @rdname ggseg_data_tract
-#' @export
-brain_data_tract <- function(
-  sf = NULL,
-  centerlines = NULL,
-  meshes = NULL,
-  ...
-) {
-  lifecycle::deprecate_warn(
-    "0.1.0",
-    "brain_data_tract()",
-    "ggseg_data_tract()"
-  )
-  ggseg_data_tract(
-    sf = sf,
-    centerlines = centerlines,
-    meshes = meshes
-  )
 }

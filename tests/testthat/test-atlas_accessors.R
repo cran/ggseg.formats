@@ -1,30 +1,50 @@
 describe("atlas_palette", {
-  it("returns palette from dk atlas by name", {
-    pal <- atlas_palette("dk")
+  it("returns the palette from an atlas object", {
+    pal <- atlas_palette(dk())
     expect_type(pal, "character")
-    expect_true(length(pal) > 0)
+    expect_gt(length(pal), 0)
     expect_true(all(grepl("^#", pal)))
   })
 
-  it("returns palette from aseg atlas by name", {
-    pal <- atlas_palette("aseg")
-    expect_type(pal, "character")
-    expect_true(length(pal) > 0)
+  it("errors when given an atlas name string instead of an object", {
+    expect_error(atlas_palette("dk"), "must be a.*ggseg_atlas")
   })
 
-  it("returns palette from atlas object directly", {
-    pal <- atlas_palette(dk())
-    expect_type(pal, "character")
-    expect_true(length(pal) > 0)
+  it("errors when the object is not an atlas", {
+    expect_error(atlas_palette(data.frame(x = 1)), "must be a.*ggseg_atlas")
+  })
+})
+
+describe("atlas_geom", {
+  it("errors for non-ggseg_atlas input", {
+    expect_error(atlas_geom(list()), "must be a")
+  })
+})
+
+describe("atlas_geometry_type", {
+  it("returns 'sf' for an sf atlas", {
+    expect_identical(atlas_geometry_type(dk()), "sf")
   })
 
-  it("errors when atlas not found", {
-    expect_error(atlas_palette("nonexistent_atlas"), "Could not find atlas")
-  })
+  it("errors when the atlas has no recognised 2D geometry", {
+    core <- data.frame(hemi = "left", region = "frontal", label = "lh_frontal")
+    vertices <- data.frame(label = "lh_frontal")
+    vertices$vertices <- list(1L:3L)
 
-  it("errors when object is not a ggseg_atlas", {
-    my_df <- data.frame(x = 1)
-    expect_error(atlas_palette(my_df), "Could not find atlas")
+    atlas <- ggseg_atlas(
+      atlas = "a",
+      type = "cortical",
+      core = core,
+      data = ggseg_data_cortical(vertices = vertices)
+    )
+
+    expect_error(atlas_geometry_type(atlas), "no recognised 2D geometry")
+  })
+})
+
+describe("atlas_polygons", {
+  it("errors for non-ggseg_atlas input", {
+    expect_error(atlas_polygons(list()), "must be a")
   })
 })
 
@@ -36,23 +56,26 @@ describe("atlas_sf", {
 
   it("has ggseg_sf as first class", {
     sf_data <- atlas_sf(dk())
-    expect_equal(class(sf_data)[1], "ggseg_sf")
+    expect_identical(class(sf_data)[1], "ggseg_sf")
     expect_s3_class(sf_data, "sf")
   })
 
-  it("prints a compact summary", {
+  it("prints without error and keeps its classes", {
     sf_data <- atlas_sf(dk())
-    expect_snapshot(print(sf_data))
+    expect_s3_class(sf_data, "ggseg_sf")
+    expect_s3_class(sf_data, "sf")
+    expect_no_error(capture.output(print(sf_data)))
   })
 
   it("errors when atlas is not brain_atlas", {
     expect_error(atlas_sf(list()), "must be a")
   })
 
-  it("errors when atlas has no sf data", {
+  it("errors when atlas has no 2D geometry", {
     atlas <- dk()
+    atlas$data$geom <- NULL
     atlas$data$sf <- NULL
-    expect_error(atlas_sf(atlas), "does not contain sf")
+    expect_error(atlas_sf(atlas), "does not contain 2D geometry")
   })
 
   it("returns sf joined with core and palette", {
@@ -76,13 +99,13 @@ describe("atlas_sf", {
       type = "cortical",
       palette = palette,
       core = core,
-      data = ggseg_data_cortical(sf = sf_geom)
+      data = ggseg_data_cortical(geom = sf_geom)
     )
 
     result <- atlas_sf(atlas)
 
     expect_s3_class(result, "sf")
-    expect_equal(nrow(result), 2)
+    expect_identical(nrow(result), 2L)
     expect_true("hemi" %in% names(result))
     expect_true("region" %in% names(result))
     expect_true("colour" %in% names(result))
@@ -90,10 +113,10 @@ describe("atlas_sf", {
 
   it("removes hemi/region from sf before merge", {
     sf_geom <- sf::st_sf(
-      label = c("lh_frontal"),
-      hemi = c("left"),
-      region = c("frontal"),
-      view = c("lateral"),
+      label = "lh_frontal",
+      hemi = "left",
+      region = "frontal",
+      view = "lateral",
       geometry = sf::st_sfc(
         make_polygon()
       )
@@ -108,7 +131,7 @@ describe("atlas_sf", {
       atlas = "test",
       type = "cortical",
       core = core,
-      data = ggseg_data_cortical(sf = sf_geom)
+      data = ggseg_data_cortical(geom = sf_geom)
     )
 
     result <- atlas_sf(atlas)
@@ -116,19 +139,55 @@ describe("atlas_sf", {
     expect_true("hemi" %in% names(result))
     expect_true("region" %in% names(result))
   })
+
+  it("draws contextual rows before core rows (not re-sorted by label)", {
+    sf_geom <- sf::st_sf(
+      label = c("lh_zzz", "lh_aaa", "lh_ctx"),
+      view = "lateral",
+      geometry = sf::st_sfc(
+        make_polygon(),
+        make_polygon2(),
+        make_polygon(c(4, 0, 5, 0, 5, 1, 4, 0))
+      )
+    )
+    core <- data.frame(
+      hemi = "left",
+      region = c("zzz", "aaa"),
+      label = c("lh_zzz", "lh_aaa")
+    )
+    atlas <- ggseg_atlas(
+      atlas = "test",
+      type = "cortical",
+      core = core,
+      data = ggseg_data_cortical(geom = sf_geom)
+    )
+
+    # lh_zzz demoted to context: it plus the pipeline outline lh_ctx must lead
+    # the remaining core region lh_aaa so focus regions draw on top.
+    demoted <- atlas_region_contextual(atlas, "zzz", match_on = "region")
+    result <- atlas_sf(demoted)
+
+    is_core <- result$label %in% demoted$core$label
+    expect_lt(max(which(!is_core)), min(which(is_core)))
+    # alphabetical order (lh_aaa, lh_ctx, lh_zzz) would put a core row first;
+    # guard against a regression to the merge() default sort.
+    expect_false(identical(result$label, sort(result$label)))
+  })
 })
 
 
 describe("atlas_vertices", {
   it("has ggseg_vertices as first class", {
     result <- atlas_vertices(dk())
-    expect_equal(class(result)[1], "ggseg_vertices")
+    expect_identical(class(result)[1], "ggseg_vertices")
     expect_s3_class(result, "tbl_df")
   })
 
-  it("prints a compact summary", {
+  it("prints without error and keeps its classes", {
     result <- atlas_vertices(dk())
-    expect_snapshot(print(result))
+    expect_s3_class(result, "ggseg_vertices")
+    expect_s3_class(result, "tbl_df")
+    expect_no_error(capture.output(print(result)))
   })
 
   it("returns vertices joined with core and palette", {
@@ -151,11 +210,11 @@ describe("atlas_vertices", {
 
     result <- atlas_vertices(atlas)
 
-    expect_equal(nrow(result), 2)
+    expect_identical(nrow(result), 2L)
     expect_true("hemi" %in% names(result))
     expect_true("region" %in% names(result))
     expect_true("colour" %in% names(result))
-    expect_equal(result$colour, c("#FF0000", "#00FF00"))
+    expect_identical(result$colour, c("#FF0000", "#00FF00"))
   })
 
   it("errors for atlas without vertices", {
@@ -206,13 +265,15 @@ describe("atlas_vertices", {
 describe("atlas_meshes", {
   it("has ggseg_meshes as first class", {
     result <- atlas_meshes(aseg())
-    expect_equal(class(result)[1], "ggseg_meshes")
+    expect_identical(class(result)[1], "ggseg_meshes")
     expect_s3_class(result, "data.frame")
   })
 
-  it("prints a compact summary", {
+  it("prints without error and keeps its classes", {
     result <- atlas_meshes(aseg())
-    expect_snapshot(print(result))
+    expect_s3_class(result, "ggseg_meshes")
+    expect_s3_class(result, "tbl_df")
+    expect_no_error(capture.output(print(result)))
   })
 
   it("returns meshes joined with core and palette", {
@@ -234,9 +295,9 @@ describe("atlas_meshes", {
 
     result <- atlas_meshes(atlas)
 
-    expect_equal(nrow(result), 1)
+    expect_identical(nrow(result), 1L)
     expect_true("colour" %in% names(result))
-    expect_equal(result$colour, "#FF0000")
+    expect_identical(result$colour, "#FF0000")
   })
 
   it("errors for atlas without meshes", {

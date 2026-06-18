@@ -3,8 +3,8 @@ describe("read_freesurfer_stats()", {
     aseg_file <- test_path("data/bert/stats/aseg.stats")
     aseg_stats <- read_freesurfer_stats(aseg_file)
 
-    expect_equal(
-      names(aseg_stats),
+    expect_named(
+      aseg_stats,
       c(
         "Index",
         "SegId",
@@ -18,13 +18,13 @@ describe("read_freesurfer_stats()", {
         "normRange"
       )
     )
-    expect_equal(nrow(aseg_stats), 45)
+    expect_identical(nrow(aseg_stats), 45L)
   })
 
   it("reads aseg.stats file without renaming when rename = FALSE", {
     aseg_file <- test_path("data/bert/stats/aseg.stats")
-    expect_equal(
-      names(read_freesurfer_stats(aseg_file, FALSE)),
+    expect_named(
+      read_freesurfer_stats(aseg_file, FALSE),
       c(
         "Index",
         "SegId",
@@ -44,8 +44,8 @@ describe("read_freesurfer_stats()", {
     dkt_file <- test_path("data/bert/stats/lh.aparc.stats")
     dkt_stats <- read_freesurfer_stats(dkt_file)
 
-    expect_equal(
-      names(dkt_stats),
+    expect_named(
+      dkt_stats,
       c(
         "label",
         "NumVert",
@@ -59,13 +59,13 @@ describe("read_freesurfer_stats()", {
         "CurvInd"
       )
     )
-    expect_equal(nrow(dkt_stats), 34)
+    expect_identical(nrow(dkt_stats), 34L)
   })
 
   it("reads aparc.stats file without renaming when rename = FALSE", {
     dkt_file <- test_path("data/bert/stats/lh.aparc.stats")
-    expect_equal(
-      names(read_freesurfer_stats(dkt_file, FALSE)),
+    expect_named(
+      read_freesurfer_stats(dkt_file, FALSE),
       c(
         "StructName",
         "NumVert",
@@ -86,8 +86,8 @@ describe("read_atlas_files()", {
   it("reads all aparc stats files from subjects directory", {
     dat <- read_atlas_files(test_path("data"), "aparc")
 
-    expect_equal(
-      names(dat),
+    expect_named(
+      dat,
       c(
         "subject",
         "label",
@@ -102,12 +102,12 @@ describe("read_atlas_files()", {
         "CurvInd"
       )
     )
-    expect_equal(nrow(dat), 68)
+    expect_identical(nrow(dat), 68L)
   })
 
   it("combines hemispheres with correct label prefixes", {
     dat <- read_atlas_files(test_path("data"), "aparc")
-    expect_equal(
+    expect_identical(
       unique(dat$label)[1:10],
       c(
         "lh_bankssts",
@@ -130,8 +130,8 @@ describe("read_freesurfer_table()", {
     file <- test_path("data/aparc.volume.table")
     dat <- read_freesurfer_table(file)
 
-    expect_equal(names(dat), c("subject", "label", "value"))
-    expect_equal(nrow(dat), 36)
+    expect_named(dat, c("subject", "label", "value"))
+    expect_identical(nrow(dat), 36L)
     expect_true(any(grepl("volume$", dat$label)))
   })
 
@@ -139,8 +139,26 @@ describe("read_freesurfer_table()", {
     file <- test_path("data/aparc.volume.table")
     dat <- read_freesurfer_table(file, measure = "volume")
 
-    expect_equal(names(dat), c("subject", "label", "volume"))
+    expect_named(dat, c("subject", "label", "volume"))
     expect_false(any(grepl("volume$", dat$label)))
+  })
+
+  it("strips the measure only from the end, not mid-label", {
+    tmp <- tempfile(fileext = ".table")
+    # `_area` appears twice in the first column; only the trailing one is the
+    # measure suffix. A global (or regex) strip would also remove the mid one.
+    writeLines(
+      c(
+        "subject\tx_area_y_area\tlh_area",
+        "bert\t1\t2"
+      ),
+      tmp
+    )
+
+    dat <- read_freesurfer_table(tmp, measure = "area")
+
+    expect_setequal(dat$label, c("x_area_y", "lh"))
+    unlink(tmp)
   })
 
   it("replaces dots with hyphens in labels", {
@@ -155,9 +173,9 @@ describe("read_freesurfer_table()", {
 
     dat <- read_freesurfer_table(tmp)
 
-    expect_false(any(grepl("\\.", dat$label)))
-    expect_true(all(grepl("-", dat$label)))
-    expect_equal(dat$label, c("roi-one", "roi-two"))
+    expect_false(any(grepl(".", dat$label, fixed = TRUE)))
+    expect_true(all(grepl("-", dat$label, fixed = TRUE)))
+    expect_identical(dat$label, c("roi-one", "roi-two"))
 
     unlink(tmp)
   })
@@ -171,32 +189,56 @@ describe("read_atlas_files() with aseg", {
     expect_true("subject" %in% names(dat))
     expect_true("label" %in% names(dat))
     expect_false("hemi" %in% names(dat))
-    expect_equal(unique(dat$subject), "bert")
+    expect_identical(unique(dat$subject), "bert")
   })
 })
 
 
 describe("find_subject_fromdir", {
   it("extracts subject from path", {
-    result <- ggseg.formats:::find_subject_fromdir("/bert/stats/aseg.stats")
-    expect_equal(result, "bert")
+    result <- find_subject_fromdir("/bert/stats/aseg.stats")
+    expect_identical(result, "bert")
+  })
+})
+
+
+describe("read_atlas_files() path handling", {
+  it("extracts the subject when subjects_dir has regex metacharacters", {
+    base <- withr::local_tempdir()
+    # '+' is a regex metacharacter: a regex-based prefix strip would not match
+    sdir <- file.path(base, "a+b")
+    dir.create(file.path(sdir, "bert", "stats"), recursive = TRUE)
+    for (f in c("lh.aparc.stats", "rh.aparc.stats")) {
+      file.copy(
+        test_path(file.path("data/bert/stats", f)),
+        file.path(sdir, "bert", "stats", f)
+      )
+    }
+
+    dat <- read_atlas_files(sdir, "aparc")
+    expect_identical(unique(dat$subject), "bert")
+  })
+
+  it("extracts the subject despite a trailing slash on subjects_dir", {
+    dat <- read_atlas_files(paste0(test_path("data"), "/"), "aseg.stats")
+    expect_identical(unique(dat$subject), "bert")
   })
 })
 
 
 describe("find_hemi_fromfile", {
   it("extracts hemisphere from lh file", {
-    result <- ggseg.formats:::find_hemi_fromfile("/path/to/lh.aparc.stats")
-    expect_equal(result, "lh")
+    result <- find_hemi_fromfile("/path/to/lh.aparc.stats")
+    expect_identical(result, "lh")
   })
 
   it("extracts hemisphere from rh file", {
-    result <- ggseg.formats:::find_hemi_fromfile("/path/to/rh.aparc.stats")
-    expect_equal(result, "rh")
+    result <- find_hemi_fromfile("/path/to/rh.aparc.stats")
+    expect_identical(result, "rh")
   })
 
   it("extracts first element for non-hemispheric files", {
-    result <- ggseg.formats:::find_hemi_fromfile("/path/to/aseg.stats")
-    expect_equal(result, "aseg")
+    result <- find_hemi_fromfile("/path/to/aseg.stats")
+    expect_identical(result, "aseg")
   })
 })

@@ -35,9 +35,7 @@
 #'
 #' @return A `ggseg_atlas` object.
 #' @export
-#' @importFrom dplyr case_when distinct
 #' @importFrom rlang %||%
-#' @importFrom tidyr unnest
 #'
 #' @examples
 #' \donttest{
@@ -64,43 +62,46 @@ convert_legacy_brain_atlas <- function(
     atlas_2d <- convert_legacy_brain_data(atlas_2d) # nolint: object_usage_linter
   }
 
-  atlas_name <- atlas_name %||%
-    (if (has_2d) atlas_2d$atlas else gsub("_3d$", "", atlas_3d$atlas[1]))
-  type <- type %||% infer_atlas_type(has_2d, atlas_2d, atlas_3d)
+  setup <- legacy_atlas_setup(has_2d, atlas_2d, atlas_3d, atlas_name, type)
 
-  sf_data <- extract_2d_sf(has_2d, atlas_2d)
-  core <- if (has_2d) atlas_2d$core else NULL
-  palette <- if (has_2d) atlas_2d$palette else NULL
+  result <- collect_legacy_atlas_parts(
+    has_3d,
+    atlas_2d,
+    atlas_3d,
+    setup$type,
+    surface,
+    brain_meshes,
+    core = setup$core,
+    palette = setup$palette,
+    sf_data = setup$sf_data
+  )
 
-  result <- if (has_3d) {
-    extract_3d_data(
-      atlas_3d,
-      type,
-      surface,
-      brain_meshes,
-      core = core,
-      palette = palette,
-      sf_data = sf_data
-    )
-  } else {
-    extract_2d_data(atlas_2d)
-  }
+  assemble_legacy_atlas(setup, result, original_palette)
+}
 
-  core <- result$core %||% core
-  palette <- result$palette %||% palette
 
-  if (is.null(palette) || !any(names(palette) %in% core$label)) {
-    palette <- remap_palette_to_labels(original_palette, core)
-  }
-
-  data <- build_atlas_data(type, sf_data, result$vertices, result$meshes)
-
-  ggseg_atlas(
-    atlas = atlas_name,
+#' @rdname convert_legacy_brain_atlas
+#' @export
+unify_legacy_atlases <- function(
+  atlas_2d = NULL,
+  atlas_3d = NULL,
+  atlas_name = NULL,
+  type = NULL,
+  surface = "inflated",
+  brain_meshes = NULL
+) {
+  lifecycle::deprecate_warn(
+    "0.1.0",
+    "unify_legacy_atlases()",
+    "convert_legacy_brain_atlas()"
+  )
+  convert_legacy_brain_atlas(
+    atlas_2d = atlas_2d,
+    atlas_3d = atlas_3d,
+    atlas_name = atlas_name,
     type = type,
-    palette = palette,
-    core = core,
-    data = data
+    surface = surface,
+    brain_meshes = brain_meshes
   )
 }
 
@@ -134,7 +135,12 @@ extract_2d_sf <- function(has_2d, atlas_2d) {
   if (!has_2d) {
     return(NULL)
   }
-  if (!is.null(atlas_2d$data$sf)) atlas_2d$data$sf else atlas_2d$sf
+  geom <- if (inherits(atlas_2d$data, "ggseg_atlas_data")) {
+    geom_from_data(atlas_2d$data)
+  } else {
+    NULL
+  }
+  if (!is.null(geom)) geom else atlas_2d$sf
 }
 
 
@@ -149,10 +155,13 @@ extract_3d_data <- function(
   palette,
   sf_data
 ) {
-  dt <- tidyr::unnest(atlas_3d, ggseg_3d)
+  dt <- df_unnest(atlas_3d, "ggseg_3d")
 
   if (is.null(core)) {
-    core <- dplyr::distinct(dt[!is.na(dt$label), ], hemi, region, label)
+    core <- df_distinct(
+      dt[!is.na(dt$label), ],
+      c("hemi", "region", "label")
+    )
   }
   if (is.null(palette) && "colour" %in% names(dt)) {
     palette <- stats::setNames(dt$colour, dt$label)
@@ -222,8 +231,7 @@ try_infer_vertices <- function(atlas_3d, surface, brain_meshes, sf_data) {
   )
   if (!is.null(vertices_list)) {
     vertices_df <- data.frame(
-      label = names(vertices_list),
-      stringsAsFactors = FALSE
+      label = names(vertices_list)
     )
     vertices_df$vertices <- unname(vertices_list)
     cli::cli_inform(
@@ -259,10 +267,9 @@ extract_2d_data <- function(atlas_2d) {
       c("i" = "Using existing vertex data from 2D atlas.")
     )
   } else {
-    cli::cli_inform(c(
-      "i" = "Created atlas from 2D only.",
-      "i" = "3D rendering will not be available without vertex data."
-    ))
+    cli::cli_inform(
+      c("i" = "Created atlas from 2D only; 3D rendering needs vertex data.")
+    )
   }
   list(core = NULL, palette = NULL, vertices = vertices, meshes = NULL)
 }
@@ -274,41 +281,15 @@ build_atlas_data <- function(type, sf_data, vertices_df, meshes_df) {
   switch(
     type,
     "cortical" = ggseg_data_cortical(
-      sf = sf_data,
+      geom = sf_data,
       vertices = vertices_df
     ),
     "subcortical" = ggseg_data_subcortical(
-      sf = sf_data,
+      geom = sf_data,
       meshes = meshes_df
     ),
-    "tract" = ggseg_data_tract(sf = sf_data, meshes = meshes_df),
-    ggseg_data_cortical(sf = sf_data, vertices = vertices_df)
-  )
-}
-
-
-#' @rdname convert_legacy_brain_atlas
-#' @export
-unify_legacy_atlases <- function(
-  atlas_2d = NULL,
-  atlas_3d = NULL,
-  atlas_name = NULL,
-  type = NULL,
-  surface = "inflated",
-  brain_meshes = NULL
-) {
-  lifecycle::deprecate_warn(
-    "0.1.0",
-    "unify_legacy_atlases()",
-    "convert_legacy_brain_atlas()"
-  )
-  convert_legacy_brain_atlas(
-    atlas_2d = atlas_2d,
-    atlas_3d = atlas_3d,
-    atlas_name = atlas_name,
-    type = type,
-    surface = surface,
-    brain_meshes = brain_meshes
+    "tract" = ggseg_data_tract(geom = sf_data, meshes = meshes_df),
+    ggseg_data_cortical(geom = sf_data, vertices = vertices_df)
   )
 }
 
@@ -332,7 +313,7 @@ has_vertex_data <- function(dt) {
   if (!("vertices" %in% names(dt))) {
     return(FALSE)
   }
-  !all(vapply(dt$vertices, function(v) length(v) == 0, logical(1)))
+  !all(vapply(dt$vertices, length, integer(1)) == 0)
 }
 
 
@@ -343,13 +324,10 @@ remap_palette_to_labels <- function(palette, core) {
     return(NULL)
   }
 
-  new_palette <- character(0)
-  for (region_name in names(palette)) {
+  new_palette <- unlist(lapply(names(palette), function(region_name) {
     labels <- core$label[!is.na(core$region) & core$region == region_name]
-    for (lbl in labels) {
-      new_palette[lbl] <- unname(palette[region_name])
-    }
-  }
+    stats::setNames(rep(unname(palette[region_name]), length(labels)), labels)
+  }))
   if (length(new_palette) == 0) NULL else new_palette
 }
 
@@ -379,63 +357,176 @@ infer_vertices_from_meshes <- function(
   vertices_list <- list()
 
   for (hemi in c("left", "right")) {
-    hemi_short <- hemi_map[hemi]
     brain_mesh <- get_brain_mesh(
-      hemisphere = hemi_short,
+      hemisphere = hemi_map[hemi],
       surface = surface,
       brain_meshes = brain_meshes
     )
     if (is.null(brain_mesh)) {
       next
     }
-
-    brain_coords <- as.matrix(brain_mesh$vertices)
-    brain_keys <- paste(
-      round(brain_coords[, 1], 4),
-      round(brain_coords[, 2], 4),
-      round(brain_coords[, 3], 4)
-    )
-    brain_index <- stats::setNames(
-      seq_len(nrow(brain_coords)) - 1L,
-      brain_keys
-    )
-
     row_idx <- which(atlas_3d$hemi == hemi & atlas_3d$surf == surface)
     if (length(row_idx) == 0) {
       next
     }
-
     ggseg <- atlas_3d$ggseg_3d[[row_idx]]
     if (!"mesh" %in% names(ggseg)) {
       next
     }
 
-    for (i in seq_len(nrow(ggseg))) {
-      m <- ggseg$mesh[[i]]
-      if (is.null(m)) {
-        next
-      }
-
-      if ("vb" %in% names(m)) {
-        region_coords <- cbind(m$vb[1, ], m$vb[2, ], m$vb[3, ])
-      } else if ("vertices" %in% names(m) && !is.null(m$vertices)) {
-        region_coords <- as.matrix(m$vertices)
-      } else {
-        next
-      }
-
-      region_keys <- paste(
-        round(region_coords[, 1], 4),
-        round(region_coords[, 2], 4),
-        round(region_coords[, 3], 4)
-      )
-      matched <- brain_index[region_keys]
-      matched <- unique(unname(matched[!is.na(matched)]))
-      if (length(matched) > 0) {
-        vertices_list[[ggseg$label[i]]] <- as.integer(matched)
-      }
-    }
+    matched_list <- match_ggseg_vertices(ggseg, mesh_vertex_index(brain_mesh))
+    vertices_list[names(matched_list)] <- matched_list
   }
 
   if (length(vertices_list) == 0) NULL else vertices_list
+}
+
+
+#' Coordinate-key -> 0-based vertex index lookup for a surface mesh
+#' @noRd
+#' @keywords internal
+mesh_vertex_index <- function(brain_mesh) {
+  coords <- as.matrix(brain_mesh$vertices)
+  keys <- coord_keys(coords)
+  stats::setNames(seq_len(nrow(coords)) - 1L, keys)
+}
+
+
+#' Rounded "x y z" coordinate keys for a 3-column coordinate matrix
+#' @noRd
+#' @keywords internal
+coord_keys <- function(coords) {
+  paste(
+    round(coords[, 1], 4),
+    round(coords[, 2], 4),
+    round(coords[, 3], 4)
+  )
+}
+
+
+#' Region vertex coordinates from a mesh (rgl `vb` or a vertices data.frame)
+#'
+#' Returns a 3-column matrix, or `NULL` if the mesh carries no usable vertices.
+#' @noRd
+#' @keywords internal
+region_coords_from_mesh <- function(m) {
+  if ("vb" %in% names(m)) {
+    cbind(m$vb[1, ], m$vb[2, ], m$vb[3, ])
+  } else if ("vertices" %in% names(m) && !is.null(m$vertices)) {
+    as.matrix(m$vertices)
+  } else {
+    NULL
+  }
+}
+
+
+#' Match each region's mesh vertices to brain-surface vertex indices
+#'
+#' Returns a named list mapping region `label` to integer vertex indices.
+#' @noRd
+#' @keywords internal
+match_ggseg_vertices <- function(ggseg, brain_index) {
+  out <- list()
+  for (i in seq_len(nrow(ggseg))) {
+    region_coords <- region_coords_from_mesh(ggseg$mesh[[i]])
+    if (is.null(region_coords)) {
+      next
+    }
+    matched <- brain_index[coord_keys(region_coords)]
+    matched <- unique(unname(matched[!is.na(matched)]))
+    if (length(matched) > 0) {
+      out[[ggseg$label[i]]] <- as.integer(matched)
+    }
+  }
+  out
+}
+
+
+#' Resolve atlas name, type, sf, core and palette from legacy inputs
+#' @noRd
+#' @keywords internal
+legacy_atlas_setup <- function(
+  has_2d,
+  atlas_2d,
+  atlas_3d,
+  atlas_name,
+  type
+) {
+  atlas_name <- atlas_name %||%
+    (if (has_2d) atlas_2d$atlas else gsub("_3d$", "", atlas_3d$atlas[1]))
+  type <- type %||% infer_atlas_type(has_2d, atlas_2d, atlas_3d)
+  list(
+    atlas_name = atlas_name,
+    type = type,
+    sf_data = extract_2d_sf(has_2d, atlas_2d),
+    core = if (has_2d) atlas_2d$core else NULL,
+    palette = if (has_2d) atlas_2d$palette else NULL
+  )
+}
+
+
+#' Build the final ggseg_atlas from setup and extracted result parts
+#' @noRd
+#' @keywords internal
+assemble_legacy_atlas <- function(setup, result, original_palette) {
+  core <- result$core %||% setup$core
+  palette <- resolve_legacy_palette(
+    result$palette %||% setup$palette,
+    original_palette,
+    core
+  )
+  data <- build_atlas_data(
+    setup$type,
+    setup$sf_data,
+    result$vertices,
+    result$meshes
+  )
+  ggseg_atlas(
+    atlas = setup$atlas_name,
+    type = setup$type,
+    palette = palette,
+    core = core,
+    data = data
+  )
+}
+
+
+#' Collect core/palette/vertices/meshes from 2D or 3D legacy inputs
+#' @noRd
+#' @keywords internal
+collect_legacy_atlas_parts <- function(
+  has_3d,
+  atlas_2d,
+  atlas_3d,
+  type,
+  surface,
+  brain_meshes,
+  core,
+  palette,
+  sf_data
+) {
+  if (has_3d) {
+    extract_3d_data(
+      atlas_3d,
+      type,
+      surface,
+      brain_meshes,
+      core = core,
+      palette = palette,
+      sf_data = sf_data
+    )
+  } else {
+    extract_2d_data(atlas_2d)
+  }
+}
+
+
+#' Ensure a palette covers the core labels, remapping from regions if needed
+#' @noRd
+#' @keywords internal
+resolve_legacy_palette <- function(palette, original_palette, core) {
+  if (is.null(palette) || !any(names(palette) %in% core$label)) {
+    palette <- remap_palette_to_labels(original_palette, core)
+  }
+  palette
 }

@@ -2,28 +2,28 @@ describe("get_brain_mesh", {
   it("returns inflated mesh for lh", {
     mesh <- get_brain_mesh(hemisphere = "lh", surface = "inflated")
 
-    expect_true(!is.null(mesh))
+    expect_false(is.null(mesh))
     expect_true("vertices" %in% names(mesh))
     expect_true("faces" %in% names(mesh))
-    expect_true(nrow(mesh$vertices) > 0)
-    expect_true(nrow(mesh$faces) > 0)
-    expect_equal(ncol(mesh$vertices), 3)
-    expect_equal(ncol(mesh$faces), 3)
+    expect_gt(nrow(mesh$vertices), 0)
+    expect_gt(nrow(mesh$faces), 0)
+    expect_identical(ncol(mesh$vertices), 3L)
+    expect_identical(ncol(mesh$faces), 3L)
   })
 
   it("returns inflated mesh for rh", {
     mesh <- get_brain_mesh(hemisphere = "rh", surface = "inflated")
 
-    expect_true(!is.null(mesh))
-    expect_equal(nrow(mesh$vertices), 10242)
-    expect_equal(nrow(mesh$faces), 20480)
+    expect_false(is.null(mesh))
+    expect_identical(nrow(mesh$vertices), 10242L)
+    expect_identical(nrow(mesh$faces), 20480L)
   })
 
   it("returns both hemispheres with same vertex count", {
     lh <- get_brain_mesh(hemisphere = "lh", surface = "inflated")
     rh <- get_brain_mesh(hemisphere = "rh", surface = "inflated")
 
-    expect_equal(nrow(lh$vertices), nrow(rh$vertices))
+    expect_identical(nrow(lh$vertices), nrow(rh$vertices))
   })
 
   it("validates hemisphere argument", {
@@ -46,11 +46,12 @@ describe("get_brain_mesh", {
     )
 
     mesh <- get_brain_mesh(
-      hemisphere = "lh", surface = "custom",
+      hemisphere = "lh",
+      surface = "custom",
       brain_meshes = custom_mesh
     )
 
-    expect_equal(mesh$vertices$x, 1:3)
+    expect_identical(mesh$vertices$x, 1:3)
   })
 
   it("uses user-supplied brain_meshes with lh_surface format", {
@@ -62,11 +63,12 @@ describe("get_brain_mesh", {
     )
 
     mesh <- get_brain_mesh(
-      hemisphere = "lh", surface = "pial",
+      hemisphere = "lh",
+      surface = "pial",
       brain_meshes = custom_mesh
     )
 
-    expect_equal(mesh$vertices$x, 10:12)
+    expect_identical(mesh$vertices$x, 10:12)
   })
 
   it("returns NULL for missing hemisphere in user-supplied meshes", {
@@ -78,7 +80,8 @@ describe("get_brain_mesh", {
     )
 
     mesh <- get_brain_mesh(
-      hemisphere = "rh", surface = "inflated",
+      hemisphere = "rh",
+      surface = "inflated",
       brain_meshes = custom_mesh
     )
 
@@ -91,15 +94,15 @@ describe("get_cerebellar_mesh", {
   it("returns SUIT cerebellar surface mesh", {
     mesh <- get_cerebellar_mesh()
 
-    expect_true(!is.null(mesh))
+    expect_false(is.null(mesh))
     expect_true("vertices" %in% names(mesh))
     expect_true("faces" %in% names(mesh))
-    expect_equal(nrow(mesh$vertices), 30013)
-    expect_equal(nrow(mesh$faces), 57665)
+    expect_identical(nrow(mesh$vertices), 30013L)
+    expect_identical(nrow(mesh$faces), 57665L)
   })
 
   it("has 0-based face indices", {
     mesh <- get_cerebellar_mesh()
-    expect_equal(min(mesh$faces$i), 0L)
+    expect_identical(min(mesh$faces$i), 0L)
   })
 })

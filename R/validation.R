@@ -4,6 +4,7 @@
 #' @keywords internal
 #' @noRd
 validate_sf <- function(sf) {
+  require_sf("validate_sf()")
   if (!is.data.frame(sf)) {
     cli::cli_abort("{.arg sf} must be a data.frame.")
   }
@@ -65,7 +66,7 @@ validate_vertices <- function(vertices) {
     ))
   }
 
-  dplyr::as_tibble(vertices)
+  as_tbl(vertices)
 }
 
 
@@ -90,58 +91,13 @@ validate_meshes <- function(meshes, tract = FALSE) {
     cli::cli_abort("{.field mesh} column must be a list-column.")
   }
 
-  empty_labels <- character(0)
+  is_empty <- vapply(
+    seq_len(nrow(meshes)),
+    function(i) validate_one_mesh(meshes$mesh[[i]], meshes$label[i], tract),
+    logical(1)
+  )
 
-  for (i in seq_len(nrow(meshes))) {
-    mesh <- meshes$mesh[[i]]
-    label <- meshes$label[i]
-
-    if (is.null(mesh)) {
-      empty_labels <- c(empty_labels, label)
-      next
-    }
-
-    if (!is.list(mesh) || !all(c("vertices", "faces") %in% names(mesh))) {
-      cli::cli_abort(
-        "Mesh for {.val {label}} needs {.field vertices} and {.field faces}."
-      )
-    }
-
-    if (
-      !is.data.frame(mesh$vertices) ||
-        !all(c("x", "y", "z") %in% names(mesh$vertices))
-    ) {
-      cli::cli_abort(c(
-        "Mesh vertices for {.val {label}} must be a data.frame.",
-        "i" = "Required columns: {.field x}, {.field y}, {.field z}."
-      ))
-    }
-
-    if (nrow(mesh$vertices) == 0) {
-      empty_labels <- c(empty_labels, label)
-      next
-    }
-
-    if (
-      !is.data.frame(mesh$faces) ||
-        !all(c("i", "j", "k") %in% names(mesh$faces))
-    ) {
-      cli::cli_abort(c(
-        "Mesh faces for {.val {label}} must be a data.frame.",
-        "i" = "Required columns: {.field i}, {.field j}, {.field k}."
-      ))
-    }
-
-    if (nrow(mesh$faces) == 0) {
-      empty_labels <- c(empty_labels, label)
-      next
-    }
-
-    if (tract && !is.null(mesh$metadata)) {
-      validate_tract_metadata(mesh$metadata, label)
-    }
-  }
-
+  empty_labels <- meshes$label[is_empty]
   if (length(empty_labels) > 0) {
     cli::cli_abort(c(
       "All mesh entries must contain data.",
@@ -150,6 +106,65 @@ validate_meshes <- function(meshes, tract = FALSE) {
   }
 
   meshes
+}
+
+
+#' Validate a single mesh entry
+#'
+#' Aborts on a structurally invalid mesh. Returns `TRUE` when the mesh is empty
+#' (`NULL`, or no vertices/faces) so the caller can collect empty labels, and
+#' `FALSE` when it carries data.
+#' @noRd
+#' @keywords internal
+validate_one_mesh <- function(mesh, label, tract) {
+  if (is.null(mesh)) {
+    return(TRUE)
+  }
+
+  if (!is.list(mesh) || !all(c("vertices", "faces") %in% names(mesh))) {
+    cli::cli_abort(
+      "Mesh for {.val {label}} needs {.field vertices} and {.field faces}."
+    )
+  }
+
+  if (mesh_geometry_empty(mesh, label)) {
+    return(TRUE)
+  }
+
+  if (tract && !is.null(mesh$metadata)) {
+    validate_tract_metadata(mesh$metadata, label)
+  }
+
+  FALSE
+}
+
+
+#' Validate a mesh's vertices and faces sub-tables
+#'
+#' Aborts on a malformed sub-table. Returns `TRUE` if either table has no rows
+#' (so the caller treats the mesh as empty).
+#' @noRd
+#' @keywords internal
+mesh_geometry_empty <- function(mesh, label) {
+  validate_mesh_part(mesh$vertices, label, "vertices", c("x", "y", "z"))
+  if (nrow(mesh$vertices) == 0) {
+    return(TRUE)
+  }
+  validate_mesh_part(mesh$faces, label, "faces", c("i", "j", "k"))
+  nrow(mesh$faces) == 0
+}
+
+
+#' A mesh sub-table must be a data.frame containing `cols`
+#' @noRd
+#' @keywords internal
+validate_mesh_part <- function(part, label, kind, cols) {
+  if (!is.data.frame(part) || !all(cols %in% names(part))) {
+    cli::cli_abort(c(
+      "Mesh {kind} for {.val {label}} must be a data.frame.",
+      "i" = "Required columns: {.field {cols}}."
+    ))
+  }
 }
 
 
@@ -205,6 +220,23 @@ validate_data_labels <- function(data, core, check_sf = FALSE) {
   core_labels <- core$label[!is.na(core$label)]
   n_core <- length(core_labels)
 
+  validate_3d_data_labels(data, core_labels)
+
+  if (isTRUE(check_sf) && n_core > 0) {
+    validate_sf_coverage(data, core_labels, n_core)
+  }
+
+  data
+}
+
+
+#' Validate 3D source labels (vertices, meshes, centerlines) against core
+#'
+#' Every core label must have a corresponding entry in each present 3D source.
+#' Aborts via [cli::cli_abort()] when any are missing.
+#' @keywords internal
+#' @noRd
+validate_3d_data_labels <- function(data, core_labels) {
   has_vertices <- !is.null(data$vertices)
   has_meshes <- !is.null(data$meshes)
 
@@ -221,26 +253,50 @@ validate_data_labels <- function(data, core, check_sf = FALSE) {
     validate_3d_labels(data$centerlines$label, core_labels, "centerlines")
   }
 
-  if (isTRUE(check_sf) && !is.null(data$sf) && n_core > 0) {
-    sf_labels <- unique(data$sf$label[!is.na(data$sf$label)])
-    missing <- setdiff(core_labels, sf_labels)
-    coverage <- 1 - length(missing) / n_core
+  invisible(data)
+}
 
-    if (coverage < 0.8) {
-      cli::cli_abort(c(
-        "sf covers only {.strong {round(coverage * 100)}%} of core labels
-        (minimum 80%).",
-        "i" = "Missing from sf: {.val {missing}}."
-      ))
-    } else if (coverage < 0.9) {
-      cli::cli_warn(c(
-        "sf covers only {.strong {round(coverage * 100)}%} of core labels.",
-        "i" = "Missing from sf: {.val {missing}}."
-      ))
-    }
+
+#' Validate 2D (sf/polygon) label coverage against core
+#'
+#' Aborts when coverage is below 80 percent and warns below 90 percent.
+#' Coverage is relaxed because 2D projections cannot always capture every
+#' region.
+#' @keywords internal
+#' @noRd
+validate_sf_coverage <- function(data, core_labels, n_core) {
+  twod_source <- geom_from_data(data)
+  if (is.null(twod_source)) {
+    return(invisible(data))
   }
 
-  data
+  # nolint start: object_usage_linter
+  twod_kind <- if (inherits(twod_source, "brain_polygons")) {
+    "polygons"
+  } else {
+    "sf"
+  }
+  # nolint end
+
+  twod_labels <- unique(twod_source$label[!is.na(twod_source$label)])
+  missing <- setdiff(core_labels, twod_labels)
+  coverage <- 1 - length(missing) / n_core
+
+  if (coverage < 0.8) {
+    cli::cli_abort(c(
+      "{twod_kind} covers only {.strong {round(coverage * 100)}%} of core
+      labels (minimum 80%).",
+      "i" = "Missing from {twod_kind}: {.val {missing}}."
+    ))
+  } else if (coverage < 0.9) {
+    cli::cli_warn(c(
+      "{twod_kind} covers only {.strong {round(coverage * 100)}%} of core
+      labels.",
+      "i" = "Missing from {twod_kind}: {.val {missing}}."
+    ))
+  }
+
+  invisible(data)
 }
 
 

@@ -1,5 +1,6 @@
 describe("validate_sf", {
   it("errors when sf is not a data.frame", {
+    withr::local_options(lifecycle_verbosity = "quiet")
     expect_error(
       ggseg_data_cortical(sf = "not a dataframe"),
       "must be a data.frame"
@@ -7,6 +8,7 @@ describe("validate_sf", {
   })
 
   it("errors when sf is missing required columns", {
+    withr::local_options(lifecycle_verbosity = "quiet")
     sf_bad <- data.frame(label = "test", view = "lateral")
     expect_error(
       ggseg_data_cortical(sf = sf_bad),
@@ -15,6 +17,7 @@ describe("validate_sf", {
   })
 
   it("errors when geometry is not sfc", {
+    withr::local_options(lifecycle_verbosity = "quiet")
     sf_bad <- data.frame(label = "test", view = "lateral", geometry = "not sfc")
     expect_error(
       ggseg_data_cortical(sf = sf_bad),
@@ -22,19 +25,31 @@ describe("validate_sf", {
     )
   })
 
-  it("converts data.frame with sfc geometry to sf", {
+  it("stores sfc-backed sf geometry as the geom slot", {
     geom <- sf::st_sfc(
       make_polygon()
     )
-    df <- data.frame(label = "test", view = "lateral")
-    df$geometry <- geom
+    df <- sf::st_sf(label = "test", view = "lateral", geometry = geom)
 
-    data <- ggseg_data_cortical(sf = df)
+    data <- ggseg_data_cortical(geom = df)
 
-    expect_s3_class(data$sf, "sf")
+    expect_s3_class(geom_from_data(data), "sf")
+  })
+
+  it("coerces a data.frame with sfc geometry to sf", {
+    geom <- sf::st_sfc(make_polygon())
+    df <- as.data.frame(
+      sf::st_sf(label = "test", view = "lateral", geometry = geom)
+    )
+    expect_false(inherits(df, "sf"))
+
+    out <- validate_sf(df)
+
+    expect_s3_class(out, "sf")
   })
 
   it("errors when geometry is empty", {
+    withr::local_options(lifecycle_verbosity = "quiet")
     sf_bad <- sf::st_sf(
       label = c("region1", "region2"),
       view = c("lateral", "lateral"),
@@ -249,7 +264,7 @@ describe("validate_data_labels", {
         atlas = "test",
         type = "cortical",
         core = core,
-        data = ggseg_data_cortical(sf = sf_geom)
+        data = ggseg_data_cortical(geom = sf_geom)
       )
     )
   })
@@ -332,7 +347,7 @@ describe("validate_data_labels", {
         atlas = "test",
         type = "cortical",
         core = core,
-        data = ggseg_data_cortical(sf = sf_geom, vertices = vertices)
+        data = ggseg_data_cortical(geom = sf_geom, vertices = vertices)
       ),
       "sf covers only 80%"
     )
@@ -340,10 +355,21 @@ describe("validate_data_labels", {
   })
 
   it("errors when sf coverage is below 80%", {
-    labels <- paste0("lh_", c(
-      "frontal", "parietal", "temporal", "occipital", "insula",
-      "cingulate", "precuneus", "cuneus", "lingual", "fusiform"
-    ))
+    labels <- paste0(
+      "lh_",
+      c(
+        "frontal",
+        "parietal",
+        "temporal",
+        "occipital",
+        "insula",
+        "cingulate",
+        "precuneus",
+        "cuneus",
+        "lingual",
+        "fusiform"
+      )
+    )
     sf_geom <- sf::st_sf(
       label = labels[1],
       view = "lateral",
@@ -355,15 +381,16 @@ describe("validate_data_labels", {
     })
     core <- data.frame(
       hemi = rep("left", 10),
-      region = gsub("lh_", "", labels),
+      region = gsub("lh_", "", labels, fixed = TRUE),
       label = labels
     )
 
     expect_error(
       ggseg_atlas(
-        atlas = "test", type = "cortical",
+        atlas = "test",
+        type = "cortical",
         core = core,
-        data = ggseg_data_cortical(sf = sf_geom, vertices = vertices)
+        data = ggseg_data_cortical(geom = sf_geom, vertices = vertices)
       ),
       "minimum 80%"
     )
@@ -378,14 +405,14 @@ describe("validate_tract_metadata", {
       centerline = matrix(1:30, ncol = 3)
     )
     expect_warning(
-      ggseg.formats:::validate_tract_metadata(metadata, "cst_left"),
+      validate_tract_metadata(metadata, "cst_left"),
       "missing"
     )
   })
 
   it("warns when metadata is not a list", {
     expect_warning(
-      ggseg.formats:::validate_tract_metadata("not a list", "bad_tract"),
+      validate_tract_metadata("not a list", "bad_tract"),
       "should be a list"
     )
   })
@@ -405,7 +432,7 @@ describe("validate_meshes calls validate_tract_metadata", {
       )
     ))
 
-    result <- ggseg.formats:::validate_meshes(meshes, tract = TRUE)
-    expect_equal(nrow(result), 1)
+    result <- validate_meshes(meshes, tract = TRUE)
+    expect_identical(nrow(result), 1L)
   })
 })

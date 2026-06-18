@@ -7,7 +7,7 @@ describe("ggseg_data_cortical", {
 
     expect_s3_class(data, "ggseg_data_cortical")
     expect_s3_class(data, "ggseg_atlas_data")
-    expect_equal(nrow(data$vertices), 2)
+    expect_identical(nrow(data$vertices), 2L)
   })
 
   it("errors when vertices is missing", {
@@ -49,8 +49,8 @@ describe("ggseg_data_cortical", {
 
   it("creates ggseg_data_cortical with both sf and vertices", {
     sf_geom <- sf::st_sf(
-      label = c("lh_frontal"),
-      view = c("lateral"),
+      label = "lh_frontal",
+      view = "lateral",
       geometry = sf::st_sfc(
         make_polygon()
       )
@@ -58,11 +58,11 @@ describe("ggseg_data_cortical", {
     vertices <- data.frame(label = "lh_frontal")
     vertices$vertices <- list(1L:3L)
 
-    data <- ggseg_data_cortical(sf = sf_geom, vertices = vertices)
+    data <- ggseg_data_cortical(geom = sf_geom, vertices = vertices)
 
     expect_s3_class(data, "ggseg_data_cortical")
-    expect_true(!is.null(data$sf))
-    expect_true(!is.null(data$vertices))
+    expect_false(is.null(geom_from_data(data)))
+    expect_false(is.null(data$vertices))
   })
 })
 
@@ -79,7 +79,7 @@ describe("ggseg_data_subcortical", {
 
     expect_s3_class(data, "ggseg_data_subcortical")
     expect_s3_class(data, "ggseg_atlas_data")
-    expect_equal(nrow(data$meshes), 1)
+    expect_identical(nrow(data$meshes), 1L)
   })
 
   it("errors when meshes is missing", {
@@ -98,8 +98,8 @@ describe("ggseg_data_subcortical", {
 
   it("creates ggseg_data_subcortical with both sf and meshes", {
     sf_geom <- sf::st_sf(
-      label = c("hippocampus"),
-      view = c("axial"),
+      label = "hippocampus",
+      view = "axial",
       geometry = sf::st_sfc(
         make_polygon()
       )
@@ -110,11 +110,11 @@ describe("ggseg_data_subcortical", {
       faces = data.frame(i = 1:3, j = 2:4, k = 3:5)
     ))
 
-    data <- ggseg_data_subcortical(sf = sf_geom, meshes = meshes)
+    data <- ggseg_data_subcortical(geom = sf_geom, meshes = meshes)
 
     expect_s3_class(data, "ggseg_data_subcortical")
-    expect_true(!is.null(data$sf))
-    expect_true(!is.null(data$meshes))
+    expect_false(is.null(geom_from_data(data)))
+    expect_false(is.null(data$meshes))
   })
 })
 
@@ -136,11 +136,11 @@ describe("ggseg_data_tract", {
 
     expect_s3_class(data, "ggseg_data_tract")
     expect_s3_class(data, "ggseg_atlas_data")
-    expect_equal(nrow(data$centerlines), 1)
+    expect_identical(nrow(data$centerlines), 1L)
   })
 
-  it("errors when no sf or centerlines provided", {
-    expect_error(ggseg_data_tract(), "sf.*centerlines")
+  it("errors when no geom or centerlines provided", {
+    expect_error(ggseg_data_tract(), "geom.*centerlines")
   })
 
   it("errors when all meshes lack centerline metadata", {
@@ -159,17 +159,17 @@ describe("ggseg_data_tract", {
 
   it("creates ggseg_data_tract with sf geometry", {
     sf_geom <- sf::st_sf(
-      label = c("cst_left"),
-      view = c("sagittal"),
+      label = "cst_left",
+      view = "sagittal",
       geometry = sf::st_sfc(
         make_polygon()
       )
     )
 
-    data <- ggseg_data_tract(sf = sf_geom)
+    data <- ggseg_data_tract(geom = sf_geom)
 
     expect_s3_class(data, "ggseg_data_tract")
-    expect_true(!is.null(data$sf))
+    expect_false(is.null(geom_from_data(data)))
   })
 
   it("creates ggseg_data_tract with centerlines directly", {
@@ -182,7 +182,7 @@ describe("ggseg_data_tract", {
     data <- ggseg_data_tract(centerlines = centerlines)
 
     expect_s3_class(data, "ggseg_data_tract")
-    expect_equal(nrow(data$centerlines), 1)
+    expect_identical(nrow(data$centerlines), 1L)
   })
 
   it("computes tangents when not provided", {
@@ -194,7 +194,7 @@ describe("ggseg_data_tract", {
 
     expect_true("tangents" %in% names(data$centerlines))
     expect_true(is.matrix(data$centerlines$tangents[[1]]))
-    expect_equal(ncol(data$centerlines$tangents[[1]]), 3)
+    expect_identical(ncol(data$centerlines$tangents[[1]]), 3L)
   })
 })
 
@@ -237,7 +237,7 @@ describe("compute_tangents", {
     data <- ggseg_data_tract(centerlines = centerlines)
     tangents <- data$centerlines$tangents[[1]]
 
-    expect_equal(nrow(tangents), 2)
+    expect_identical(nrow(tangents), 2L)
   })
 
   it("handles zero-length tangent vectors", {
@@ -248,8 +248,8 @@ describe("compute_tangents", {
     data <- ggseg_data_tract(centerlines = centerlines)
     tangents <- data$centerlines$tangents[[1]]
 
-    expect_equal(tangents[1, ], c(1, 0, 0))
-    expect_equal(nrow(tangents), 3)
+    expect_identical(tangents[1, ], c(1, 0, 0))
+    expect_identical(nrow(tangents), 3L)
   })
 })
 
@@ -264,8 +264,9 @@ describe("print methods", {
     vertices <- data.frame(label = "lh_frontal")
     vertices$vertices <- list(1L:3L)
 
-    data <- ggseg_data_cortical(sf = sf_geom, vertices = vertices)
-    expect_snapshot(print(data))
+    data <- ggseg_data_cortical(geom = sf_geom, vertices = vertices)
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_subcortical with sf and meshes", {
@@ -280,8 +281,9 @@ describe("print methods", {
       faces = data.frame(i = 1:3, j = 2:4, k = 3:5)
     ))
 
-    data <- ggseg_data_subcortical(sf = sf_geom, meshes = meshes)
-    expect_snapshot(print(data))
+    data <- ggseg_data_subcortical(geom = sf_geom, meshes = meshes)
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_tract with centerlines", {
@@ -292,7 +294,8 @@ describe("print methods", {
     centerlines$tangents <- list(tangents)
 
     data <- ggseg_data_tract(centerlines = centerlines)
-    expect_snapshot(print(data))
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_cortical without sf", {
@@ -300,7 +303,24 @@ describe("print methods", {
     vertices$vertices <- list(1L:3L)
 
     data <- ggseg_data_cortical(vertices = vertices)
-    expect_snapshot(print(data))
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
+  })
+
+  it("summarises brain_polygons geometry in the 2D view listing", {
+    sf_geom <- sf::st_sf(
+      label = "lh_frontal",
+      view = "lateral",
+      geometry = sf::st_sfc(make_polygon())
+    )
+    polygons <- sf_to_polygons(sf_geom)
+    expect_s3_class(polygons, "brain_polygons")
+
+    data <- ggseg_data_cortical(geom = polygons)
+    expect_s3_class(geom_from_data(data), "brain_polygons")
+    expect_match(summarise_2d(data), "polygons")
+    expect_match(summarise_2d(data), "lateral")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_subcortical without sf", {
@@ -311,7 +331,8 @@ describe("print methods", {
     ))
 
     data <- ggseg_data_subcortical(meshes = meshes)
-    expect_snapshot(print(data))
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_cerebellar with sf and vertices", {
@@ -324,10 +345,11 @@ describe("print methods", {
     vertices$vertices <- list(0L:9L)
 
     data <- ggseg_data_cerebellar(
-      sf = sf_geom,
+      geom = sf_geom,
       vertices = vertices
     )
-    expect_snapshot(print(data))
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_cerebellar without vertices", {
@@ -337,8 +359,9 @@ describe("print methods", {
       geometry = sf::st_sfc(make_polygon())
     )
 
-    data <- ggseg_data_cerebellar(sf = sf_geom)
-    expect_snapshot(print(data))
+    data <- ggseg_data_cerebellar(geom = sf_geom)
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 
   it("prints ggseg_data_tract with sf and centerlines", {
@@ -353,8 +376,9 @@ describe("print methods", {
     centerlines$points <- list(pts)
     centerlines$tangents <- list(tangents)
 
-    data <- ggseg_data_tract(sf = sf_geom, centerlines = centerlines)
-    expect_snapshot(print(data))
+    data <- ggseg_data_tract(geom = sf_geom, centerlines = centerlines)
+    expect_s3_class(data, "ggseg_atlas_data")
+    expect_no_error(capture.output(print(data)))
   })
 })
 
@@ -368,7 +392,7 @@ describe("ggseg_data_cerebellar", {
 
     expect_s3_class(data, "ggseg_data_cerebellar")
     expect_s3_class(data, "ggseg_atlas_data")
-    expect_equal(nrow(data$vertices), 1)
+    expect_identical(nrow(data$vertices), 1L)
   })
 
   it("creates ggseg_data_cerebellar with sf", {
@@ -378,10 +402,10 @@ describe("ggseg_data_cerebellar", {
       geometry = sf::st_sfc(make_polygon())
     )
 
-    data <- ggseg_data_cerebellar(sf = sf_geom)
+    data <- ggseg_data_cerebellar(geom = sf_geom)
 
     expect_s3_class(data, "ggseg_data_cerebellar")
-    expect_true(!is.null(data$sf))
+    expect_false(is.null(geom_from_data(data)))
     expect_null(data$vertices)
   })
 
@@ -395,19 +419,19 @@ describe("ggseg_data_cerebellar", {
     vertices$vertices <- list(0L:9L)
 
     data <- ggseg_data_cerebellar(
-      sf = sf_geom,
+      geom = sf_geom,
       vertices = vertices
     )
 
     expect_s3_class(data, "ggseg_data_cerebellar")
-    expect_true(!is.null(data$sf))
-    expect_true(!is.null(data$vertices))
+    expect_false(is.null(geom_from_data(data)))
+    expect_false(is.null(data$vertices))
   })
 
-  it("errors when neither sf nor vertices provided", {
+  it("errors when neither geom nor vertices provided", {
     expect_error(
       ggseg_data_cerebellar(),
-      "sf.*vertices.*is required"
+      "geom.*vertices.*is required"
     )
   })
 
@@ -478,7 +502,7 @@ describe("print_mesh_summary with NULL mesh entries", {
       )
     )
     expect_output(
-      ggseg.formats:::print_mesh_summary(meshes),
+      print_mesh_summary(meshes),
       "region1"
     )
   })

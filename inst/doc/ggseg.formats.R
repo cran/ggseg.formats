@@ -6,6 +6,9 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 library(ggseg.formats)
+# Several examples below print or plot via the sf path. Since the
+# sf-optional milestone, sf is a Suggests dependency, so load it here.
+library(sf)
 
 ## -----------------------------------------------------------------------------
 dk()

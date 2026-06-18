@@ -6,6 +6,10 @@ knitr::opts_chunk$set(
 
 ## -----------------------------------------------------------------------------
 library(ggseg.formats)
+# The atlas-manipulation helpers shown here operate on sf-backed atlas
+# geometry. Since the sf-optional milestone, sf is a Suggests dependency,
+# so load it explicitly here.
+library(sf)
 
 ## -----------------------------------------------------------------------------
 no_cc <- atlas_region_remove(dk(), "corpus callosum")
